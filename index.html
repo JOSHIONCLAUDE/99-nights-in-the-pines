@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#08120c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>99 Nights in the Pines</title>
+<style>
+  :root { --acc:#ffb347; --ink:#eef2e4; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; background:#000; color:var(--ink); font-family:'Segoe UI', Roboto, Arial, sans-serif; overflow:hidden; user-select:none; -webkit-user-select:none; touch-action:none; }
+  #game { position:fixed; inset:0; } #game canvas { display:block; width:100%; height:100%; }
+  .screen { position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:flex-start; text-align:center; padding:18px; overflow-y:auto; z-index:20; background:rgba(4,8,6,0.9); } .screen > :first-child { margin-top:auto; } .screen > :last-child { margin-bottom:auto; }
+  .screen.on { display:flex; }
+  #title { background:radial-gradient(ellipse at 50% 40%, rgba(120,60,10,0.55), rgba(3,6,5,0.92) 75%); }
+  h1.logo { font-family:Georgia,'Times New Roman',serif; font-size:clamp(34px,8vw,84px); letter-spacing:3px; margin:0; color:#ffe2b0; text-shadow:0 0 26px rgba(255,140,30,0.65), 0 4px 0 #3a1a06; line-height:1; }
+  h1.logo b { color:#ff8a2a; font-size:1.5em; } h1.logo small { display:block; font-size:0.3em; letter-spacing:7px; color:#9bc47a; margin-top:8px; }
+  .sub { opacity:0.88; margin:12px 0 20px; font-size:clamp(14px,2.4vw,19px); max-width:640px; line-height:1.5; }
+  .btn { font:inherit; font-size:clamp(16px,2.6vw,22px); font-weight:800; letter-spacing:2px; padding:12px 38px; margin:6px; min-width:min(300px,80vw); border-radius:6px; border:2px solid #8a4a14; background:linear-gradient(#5a3010,#2a1608); color:#ffeccc; cursor:pointer; text-transform:uppercase; }
+  .btn:hover, .btn:active { background:linear-gradient(#7a4418,#3a1e0c); border-color:#ffb347; } .btn.small { font-size:15px; padding:8px 18px; min-width:0; letter-spacing:1px; } .btn:disabled { opacity:.4; cursor:default; }
+  .seg { display:inline-flex; border:1px solid #6a3a10; border-radius:8px; overflow:hidden; margin:4px; } .seg button { font:inherit; padding:8px 14px; background:#1a1008; color:var(--ink); border:0; border-right:1px solid #3a2410; cursor:pointer; } .seg button:last-child { border-right:0; } .seg button.on { background:#b8641a; font-weight:700; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:16px; width:min(460px,92vw); margin:8px 0; text-align:left; }
+  .card { background:rgba(20,14,8,0.94); border:1px solid #6a3a10; border-radius:12px; padding:18px 22px; max-width:min(700px,94vw); text-align:left; line-height:1.55; font-size:15px; } .card h3 { margin:12px 0 4px; color:var(--acc); font-size:16px; } .card b { color:#ffe2b0; }
+  input[type=range] { width:180px; accent-color:#ff8a2a; }
+  #hud { position:fixed; inset:0; display:none; pointer-events:none; z-index:10; } #hud.on { display:block; }
+  #dot { position:absolute; left:50%; top:50%; width:6px; height:6px; margin:-3px; border-radius:50%; background:rgba(255,255,255,0.7); box-shadow:0 0 3px #000; } #dot.hot { background:#ffb347; width:10px; height:10px; margin:-5px; }
+  #night { position:absolute; left:50%; top:10px; transform:translateX(-50%); text-align:center; font-family:Georgia,serif; font-size:clamp(18px,3.2vw,30px); letter-spacing:2px; text-shadow:0 2px 8px #000; color:#ffe2b0; } #night small { display:block; font-family:'Segoe UI',Arial; font-size:0.5em; letter-spacing:1px; color:#fff; opacity:.85; } #clock { width:min(200px,30vw); height:7px; margin:4px auto 0; background:rgba(0,0,0,.55); border:1px solid #666; border-radius:4px; overflow:hidden; } #clock i { display:block; height:100%; background:linear-gradient(90deg,#ffd76a,#ff8a2a,#3a4a9a); width:50%; }
+  #bars { position:absolute; left:14px; top:12px; width:min(210px,32vw); font-size:11px; text-shadow:0 1px 3px #000; } .bar { margin-bottom:5px; } .bar div { height:12px; background:rgba(0,0,0,.6); border:2px solid #4a4a4a; border-radius:6px; overflow:hidden; } .bar i { display:block; height:100%; width:100%; }
+  #inv { position:absolute; right:14px; top:12px; text-align:right; font-size:clamp(13px,1.9vw,17px); font-weight:700; text-shadow:0 2px 5px #000; line-height:1.5; }
+  #hotbar { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); display:flex; gap:6px; pointer-events:auto; } .slot { width:clamp(50px,8vw,72px); height:clamp(50px,8vw,72px); border-radius:8px; background:rgba(8,6,4,0.72); border:2px solid #5a4a38; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:clamp(20px,3.4vw,30px); position:relative; } .slot.on { border-color:var(--acc); background:rgba(80,44,10,0.7); box-shadow:0 0 12px rgba(255,179,71,0.5); } .slot b { position:absolute; left:4px; top:1px; font-size:11px; opacity:.65; } .slot small { position:absolute; bottom:1px; font-size:10px; opacity:.85; }
+  #compass { position:absolute; left:14px; bottom:14px; width:70px; height:70px; text-align:center; font-size:12px; text-shadow:0 1px 3px #000; } #compass i { display:block; width:0; height:0; margin:0 auto; border-left:12px solid transparent; border-right:12px solid transparent; border-bottom:34px solid #ffb347; transform-origin:50% 75%; filter:drop-shadow(0 0 4px #000); }
+  #prompt { position:absolute; left:50%; top:60%; transform:translateX(-50%); font-size:clamp(16px,2.6vw,22px); text-shadow:0 2px 6px #000; text-align:center; opacity:0; white-space:nowrap; } #prompt.on { opacity:1; } #prompt kbd { background:rgba(0,0,0,.65); border:1px solid #aaa; border-radius:5px; padding:1px 8px; margin-right:6px; font-weight:700; }
+  #msg { position:absolute; left:50%; top:17%; transform:translateX(-50%); width:min(760px,92vw); text-align:center; font-family:Georgia,serif; font-size:clamp(20px,4vw,40px); text-shadow:0 3px 10px #000; opacity:0; transition:opacity .4s; color:#ffe2b0; line-height:1.25; } #msg.on { opacity:1; }
+  #hurt { position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(120,0,0,0) 35%, rgba(170,0,0,.9) 100%); opacity:0; transition:opacity .25s; } #fade { position:absolute; inset:0; background:#000; opacity:0; transition:opacity 1s; }
+  #hudHelp { position:absolute; left:96px; bottom:14px; font-size:12px; opacity:.55; line-height:1.5; text-shadow:0 1px 3px #000; }
+  #touch { position:fixed; inset:0; display:none; z-index:12; pointer-events:none; } body.touchmode #touch.on { display:block; } body.touchmode #hudHelp { display:none; }
+  #stick { position:absolute; left:calc(18px + env(safe-area-inset-left)); bottom:calc(40px + env(safe-area-inset-bottom)); width:130px; height:130px; border-radius:50%; background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.22); pointer-events:auto; touch-action:none; } #stick i { position:absolute; left:50%; top:50%; width:58px; height:58px; margin:-29px; border-radius:50%; background:rgba(255,255,255,.28); }
+  #lookzone { position:absolute; right:0; top:0; width:55%; height:100%; pointer-events:auto; touch-action:none; }
+  .tb { position:absolute; width:62px; height:62px; border-radius:50%; background:rgba(255,255,255,.14); border:2px solid rgba(255,255,255,.35); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; pointer-events:auto; touch-action:none; text-align:center; } .tb.down { background:rgba(255,179,71,.5); }
+  #tAtk { right:calc(26px + env(safe-area-inset-right)); bottom:calc(70px + env(safe-area-inset-bottom)); width:92px; height:92px; font-size:16px; background:rgba(200,80,40,.45); } #tUse { right:calc(130px + env(safe-area-inset-right)); bottom:calc(60px + env(safe-area-inset-bottom)); width:76px; height:76px; } #tEat { right:calc(26px + env(safe-area-inset-right)); bottom:calc(176px + env(safe-area-inset-bottom)); } #tSwap { right:calc(100px + env(safe-area-inset-right)); bottom:calc(150px + env(safe-area-inset-bottom)); } #tRun { left:calc(160px + env(safe-area-inset-left)); bottom:calc(30px + env(safe-area-inset-bottom)); } #tPause { right:calc(14px + env(safe-area-inset-right)); top:calc(52px + env(safe-area-inset-top)); width:44px; height:44px; }
+  body.touchmode #inv { top:60px; font-size:12px; } body.touchmode #hotbar { display:none; } body.touchmode #bars { width:150px; } body.touchmode #compass { bottom:auto; top:110px; left:14px; }
+  #rotate { position:fixed; inset:0; z-index:90; background:#000; display:none; align-items:center; justify-content:center; text-align:center; font-size:22px; padding:30px; } @media (orientation:portrait) { body.touchmode.playing #rotate { display:flex; } }
+  #loading { position:fixed; inset:0; z-index:100; background:#000; display:flex; align-items:center; justify-content:center; font-size:18px; letter-spacing:3px; color:#9a8a70; }
+  #craft { z-index:30; } .rec { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:6px 0; padding:8px 10px; background:rgba(255,255,255,.05); border-radius:8px; } .rec span small { display:block; opacity:.75; font-size:12px; }
+  .endTitle { font-family:Georgia,serif; font-size:clamp(32px,7vw,64px); margin:0 0 8px; color:#ffe2b0; text-shadow:0 0 18px rgba(255,120,30,.6); }
+</style>
+</head>
+<body>
+<div id="loading">Loading the pines…</div>
+<div id="game"></div>
+<div id="hud">
+  <div id="hurt"></div>
+  <div id="dot"></div>
+  <div id="night"></div>
+  <div id="bars"><div class="bar"><div><i id="hpBar" style="background:linear-gradient(#e24a3a,#a02418)"></i></div></div><div class="bar"><div><i id="hgBar" style="background:linear-gradient(#e8a23a,#a86a18)"></i></div></div><div class="bar"><div><i id="fuBar" style="background:linear-gradient(#ffd24a,#ff6a1a)"></i></div></div><span id="barTxt"></span></div>
+  <div id="inv"></div>
+  <div id="compass"><i id="arrow"></i><span id="cdist"></span></div>
+  <div id="msg"></div><div id="prompt"></div>
+  <div id="hotbar"></div>
+  <div id="hudHelp"><b>WASD</b> move · <b>Shift</b> run · <b>Click</b> chop / attack · <b>E</b> use · <b>F</b> eat · <b>1-3</b> tools · <b>Esc</b> pause</div>
+  <div id="fade"></div>
+</div>
+<div id="touch">
+  <div id="stick"><i></i></div><div id="lookzone"></div>
+  <div class="tb" id="tAtk">HIT</div><div class="tb" id="tUse">USE</div><div class="tb" id="tEat">EAT</div><div class="tb" id="tSwap">TOOL</div><div class="tb" id="tRun">RUN</div><div class="tb" id="tPause">II</div>
+</div>
+<div id="rotate"><div>📱↻<br>Turn your phone sideways to play</div></div>
+
+<div class="screen on" id="title">
+  <h1 class="logo"><b>99</b> NIGHTS<br>IN THE PINES<small>KEEP THE FIRE ALIVE</small></h1>
+  <div class="sub">You are lost in a huge dark forest. Chop wood, find food, rescue the lost children and keep your campfire burning. Wolves hunt in the dark. Can you survive <b>99 nights</b>?</div>
+  <div class="row"><span>Difficulty</span><div class="seg" id="segDiff"><button data-v="easy">Easy</button><button data-v="normal">Normal</button><button data-v="hard">Hard</button></div></div>
+  <button class="btn" id="btnContinue" style="display:none">Continue</button>
+  <button class="btn" id="btnPlay">New game</button>
+  <button class="btn small" id="btnHow">How to play</button><button class="btn small" id="btnSet">Settings</button>
+  <div class="sub" style="font-size:12px;margin-top:14px;opacity:.55">Cartoon-style survival with loud sounds. An original game, not connected to any other game.</div>
+</div>
+<div class="screen" id="howto"><div class="card"><h2 style="margin:0 0 6px;color:#ffe2b0">How to play</h2>
+  <h3>The goal</h3>Survive <b>99 nights</b>. The game saves every morning, so you can come back and continue.
+  <h3>The campfire</h3>It is your safe place. Wolves will not come close while it burns. <b>Press E at the fire to add logs.</b> If it goes out at night, you are in big trouble. Upgrade it at the crafting bench to burn longer and protect a bigger area. Follow the orange arrow to find camp.
+  <h3>Gather</h3>Click trees with your <b>axe</b> for logs. Press E on berry bushes, scrap piles and chests. Hunt deer and bunnies for meat, then cook it at the fire. Press <b>F</b> to eat.
+  <h3>Craft</h3>At the bench next to the fire make a better axe, a spear, bullets, a rifle, medkits and campfire upgrades.
+  <h3>Rescue the kids</h3>Five lost children are hiding in camps around the forest. Find them and press E to bring them back to camp. Each one gives you a reward.
+  <h3>Danger</h3>Wolves, huge alpha wolves and hooded cultists come out at night. Fight with your axe, spear or rifle, stay near the fire and keep your hunger up.
+  <div style="text-align:center;margin-top:14px"><button class="btn small" id="howClose">Back</button></div></div></div>
+<div class="screen" id="settings"><div class="card" style="text-align:center"><h2 style="margin:0 0 10px;color:#ffe2b0">Settings</h2>
+  <div class="row"><span>Look speed</span><input type="range" id="rngSens" min="0.4" max="3" step="0.1"></div>
+  <div class="row"><span>Volume</span><input type="range" id="rngVol" min="0" max="1" step="0.05"></div>
+  <div class="row"><span>Brightness</span><input type="range" id="rngBright" min="0.7" max="2" step="0.05"></div>
+  <div class="row"><span>Graphics</span><div class="seg" id="segQ"><button data-v="high">High</button><button data-v="low">Fast</button></div></div>
+  <button class="btn small" id="setClose">Back</button></div></div>
+<div class="screen" id="pause"><h1 class="logo" style="font-size:clamp(30px,6vw,56px)">PAUSED</h1><button class="btn" id="btnResume">Resume</button><button class="btn small" id="btnPauseSet">Settings</button><button class="btn small" id="btnQuit">Save and quit</button></div>
+<div class="screen" id="craft"><div class="card" style="width:min(560px,94vw)"><h2 style="margin:0 0 4px;color:#ffe2b0">🔨 Crafting bench</h2><div id="craftHave" style="opacity:.8;font-size:13px"></div><div id="recipes"></div><div style="text-align:center;margin-top:10px"><button class="btn small" id="craftClose">Close</button></div></div></div>
+<div class="screen" id="over"><h1 class="endTitle" id="overTitle"></h1><div class="sub" id="overText"></div><button class="btn" id="btnAgain">Try again</button><button class="btn small" id="btnOverMenu">Menu</button></div>
+
+<script src="vendor/three.min.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id), clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t, rr = (a, b) => a + Math.random() * (b - a), pick = a => a[(Math.random() * a.length) | 0];
+const mix = (c1, c2, t) => { const a = new THREE.Color(c1), b = new THREE.Color(c2); return a.lerp(b, t); };
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const QS = new URLSearchParams(location.search);
+const TOUCH = QS.get('touch') === '1' || matchMedia('(hover: none) and (pointer: coarse)').matches;
+const CFG = { sens: 1.2, vol: 0.85, bright: 1.0, diff: 'normal', quality: TOUCH ? 'low' : 'high' };
+try { Object.assign(CFG, JSON.parse(localStorage.getItem('npCfg') || '{}')); } catch (e) {}
+const saveCfg = () => { try { localStorage.setItem('npCfg', JSON.stringify(CFG)); } catch (e) {} };
+function fatal(m) { const l = $('loading'); l.style.display = 'flex'; l.innerHTML = '<div style="max-width:520px;line-height:1.6;letter-spacing:0">⚠ ' + m + '</div>'; throw new Error(m); }
+if (typeof THREE === 'undefined') fatal('The 3D engine did not load. Keep the <b>vendor</b> folder next to the game file.');
+let glOK = false; try { const c = document.createElement('canvas'); glOK = !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) {} if (!glOK) fatal('Your device could not start 3D graphics (WebGL).');
+const renderer = new THREE.WebGLRenderer({ antialias: !TOUCH && CFG.quality === 'high', powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, TOUCH || CFG.quality === 'low' ? 1.25 : 2)); renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = CFG.bright; $('game').appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x8ab4d8); scene.fog = new THREE.Fog(0x8ab4d8, 25, 95);
+const cam = new THREE.PerspectiveCamera(72, 1, 0.05, 160); cam.rotation.order = 'YXZ'; scene.add(cam);
+function resize() { renderer.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); } addEventListener('resize', resize); resize();
+const ambient = new THREE.AmbientLight(0xffffff, 0.9); scene.add(ambient); const sun = new THREE.DirectionalLight(0xfff0d0, 0.9); sun.position.set(40, 80, 30); scene.add(sun);
+const fireLight = new THREE.PointLight(0xff9a40, 0, 40, 2); scene.add(fireLight); const lantern = new THREE.PointLight(0xffd9a0, 0, 16, 2); cam.add(lantern); lantern.position.set(0.2, -0.1, 0);
+// ---------- textures ----------
+function makeTex(draw, size = 256) { const c = document.createElement('canvas'); c.width = c.height = size; draw(c.getContext('2d'), size); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t; }
+const specks = (g, s, n, lo, hi) => { for (let i = 0; i < n; i++) { const v = (Math.random() * (hi - lo) + lo) | 0; g.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.1)'; g.fillRect(Math.random() * s, Math.random() * s, 1 + Math.random() * 2, 1 + Math.random() * 2); } };
+const TEX = {
+  grass: makeTex((g, s) => { g.fillStyle = '#3a5a30'; g.fillRect(0, 0, s, s); for (let i = 0; i < 10; i++) { const x = Math.random() * s, y = Math.random() * s, r = 20 + Math.random() * 50, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, i % 2 ? 'rgba(100,130,50,.25)' : 'rgba(15,35,10,.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); } specks(g, s, 3000, 30, 170); for (let i = 0; i < 700; i++) { g.strokeStyle = 'rgba(' + (30 + Math.random() * 40) + ',' + (80 + Math.random() * 60) + ',30,.35)'; g.beginPath(); const x = Math.random() * s, y = Math.random() * s; g.moveTo(x, y); g.lineTo(x + Math.random() * 4 - 2, y - 3 - Math.random() * 5); g.stroke(); } }),
+  dirt: makeTex((g, s) => { g.fillStyle = '#5a4630'; g.fillRect(0, 0, s, s); specks(g, s, 4000, 30, 170); }),
+  wood: makeTex((g, s) => { g.fillStyle = '#6a4a2c'; g.fillRect(0, 0, s, s); for (let y = 0; y < s; y += 32) { g.fillStyle = 'rgba(20,10,4,.55)'; g.fillRect(0, y, s, 2); } specks(g, s, 900, 20, 150); }),
+  rock: makeTex((g, s) => { g.fillStyle = '#6a6c6a'; g.fillRect(0, 0, s, s); specks(g, s, 3000, 30, 210); }),
+};
+const _m = {}; function MAT(k, o = {}) { const id = k + JSON.stringify(o); return _m[id] || (_m[id] = new THREE.MeshStandardMaterial(Object.assign({ map: TEX[k] || null, color: TEX[k] ? 0xffffff : k, roughness: 0.9, metalness: 0 }, o))); }
+function boxMesh(w, h, d, mat, tile = 2) { const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv, dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]]; for (let f = 0; f < 6; f++) for (let v = 0; v < 4; v++) { const i = f * 4 + v; uv.setXY(i, uv.getX(i) * dims[f][0] / tile, uv.getY(i) * dims[f][1] / tile); } return new THREE.Mesh(g, mat); }
+// ---------- sound (made with code) ----------
+let ac = null, master = null, noiseBuf = null;
+function audioInit() { if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+  try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = CFG.vol; const cp = ac.createDynamicsCompressor(); cp.threshold.value = -14; cp.ratio.value = 6; master.connect(cp); cp.connect(ac.destination);
+    noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const w = ac.createBufferSource(); w.buffer = noiseBuf; w.loop = true; const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 340; const g = ac.createGain(); g.gain.value = 0.2; w.connect(f); f.connect(g); g.connect(master); w.start(); const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 0.09; lg.gain.value = 160; lfo.connect(lg); lg.connect(f.frequency); lfo.start();
+  } catch (e) { ac = null; } }
+const snd = fn => { if (!ac) return; try { fn(ac.currentTime); } catch (e) { if (QS.get('dbg')) console.error(e); } };
+function spat(x, z, far = 40) { if (!ac) return { v: 0, p: 0 }; const dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz), ang = Math.atan2(dx, dz) - (P.yaw + Math.PI); return { v: clamp(1.15 - d / far, 0, 1) ** 1.5, p: clamp(Math.sin(ang) * -0.9, -1, 1) }; }
+function outN(vol, pan) { const g = ac.createGain(); g.gain.value = vol; if (ac.createStereoPanner && pan) { const p = ac.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); g.connect(p); p.connect(master); } else g.connect(master); return g; }
+function nb(t, dur, freq, q, vol, pan = 0, type = 'bandpass', rate = 1) { const s = ac.createBufferSource(); s.buffer = noiseBuf; s.playbackRate.value = rate * (0.9 + Math.random() * 0.2); const f = ac.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q; const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + Math.min(0.01, dur * 0.2)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); s.connect(f); f.connect(g); g.connect(outN(1, pan)); s.start(t, Math.random() * 0.8, dur + 0.05); }
+function tn(t, f, dur, vol, type = 'sine', pan = 0, f2 = 0, att = 0.01) { const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + att); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); g.connect(outN(1, pan)); o.start(t); o.stop(t + dur + 0.03); }
+const SFX = {
+  swing() { snd(t => nb(t, 0.12, 900, 0.8, 0.12, 0, 'bandpass', 1.4)); },
+  chop() { snd(t => { tn(t, 160, 0.12, 0.5, 'sine', 0, 60); nb(t, 0.1, 1800, 1, 0.3); }); },
+  fell() { snd(t => { nb(t, 0.8, 300, 0.6, 0.35, 0, 'lowpass', 0.6); tn(t + 0.3, 70, 0.5, 0.6, 'sine', 0, 30); }); },
+  hit(x, z) { const s = spat(x, z); snd(t => { nb(t, 0.09, 700, 1.5, 0.28, s.p); tn(t, 140, 0.1, 0.25, 'sine', s.p, 70); }); },
+  shoot() { snd(t => { nb(t, 0.2, 2200, 0.8, 0.5); tn(t, 200, 0.14, 0.45, 'triangle', 0, 60); nb(t + 0.03, 0.4, 500, 0.6, 0.15, 0, 'lowpass'); }); },
+  growl(x, z, big) { const s = spat(x, z, 45); if (s.v < 0.04) return; snd(t => { const f = big ? 55 : 85; tn(t, f * 1.5, 0.7, 0.2 * s.v, 'sawtooth', s.p, f * 0.8, 0.08); nb(t, 0.6, 400, 2, 0.08 * s.v, s.p, 'lowpass'); }); },
+  howl(x, z) { const s = spat(x, z, 120); snd(t => { tn(t, 300, 1.8, 0.1 * Math.max(0.3, s.v), 'sine', s.p, 520, 0.4); tn(t + 1.8, 520, 1.4, 0.08 * Math.max(0.3, s.v), 'sine', s.p, 260, 0.1); }); },
+  die(x, z) { const s = spat(x, z); snd(t => { tn(t, 260, 0.45, 0.25 * Math.max(0.4, s.v), 'sawtooth', s.p, 50); nb(t, 0.25, 400, 1, 0.2, s.p, 'lowpass'); }); },
+  claw(x, z) { const s = spat(x, z); snd(t => nb(t, 0.14, 1200, 1.5, 0.28, s.p)); },
+  hurt() { snd(t => { tn(t, 160, 0.3, 0.45, 'sawtooth', 0, 70); nb(t, 0.2, 500, 1, 0.4, 0, 'lowpass'); }); },
+  eat() { snd(t => { for (let i = 0; i < 3; i++) nb(t + i * 0.13, 0.08, 1100, 2, 0.18); }); },
+  pickup() { snd(t => { tn(t, 600, 0.1, 0.1, 'triangle'); tn(t + 0.07, 900, 0.14, 0.1, 'triangle'); }); },
+  craft() { snd(t => { for (let i = 0; i < 3; i++) { tn(t + i * 0.12, 700 + i * 150, 0.08, 0.15, 'square'); nb(t + i * 0.12, 0.06, 2500, 1, 0.2); } }); },
+  deny() { snd(t => { tn(t, 200, 0.12, 0.15, 'square'); tn(t + 0.1, 150, 0.15, 0.15, 'square'); }); },
+  fuel() { snd(t => { nb(t, 0.4, 700, 0.8, 0.25, 0, 'lowpass'); tn(t + 0.1, 180, 0.3, 0.2, 'sine', 0, 90); }); },
+  chime() { snd(t => { for (let i = 0; i < 4; i++) tn(t + i * 0.16, 523 * [1, 1.25, 1.5, 2][i], 0.5, 0.12, 'sine'); }); },
+  horn() { snd(t => { tn(t, 98, 1.8, 0.28, 'sawtooth', 0, 90, 0.15); tn(t, 49, 2, 0.3, 'sine'); }); },
+  dawn() { snd(t => { for (let i = 0; i < 3; i++) { tn(t + i * 0.5, 392 * [1, 1.25, 1.5][i], 1.6, 0.1, 'sine'); } }); },
+  step(v = 1) { snd(t => nb(t, 0.07, 380, 1, 0.1 * v, 0, 'lowpass')); },
+  heart(v = 0.4) { snd(t => { tn(t, 70, 0.16, v, 'sine', 0, 38); tn(t + 0.2, 62, 0.18, v * 0.8, 'sine', 0, 34); }); },
+  cricket() { snd(t => { for (let i = 0; i < 5; i++) tn(t + i * 0.075, 4300 + Math.random() * 200, 0.035, 0.01, 'square', rr(-0.8, 0.8)); }); },
+  owl() { snd(t => { tn(t, 430, 0.32, 0.05, 'sine', 0, 390, 0.05); tn(t + 0.42, 395, 0.3, 0.04, 'sine', 0, 350, 0.05); }); },
+  pop(v) { snd(t => nb(t, 0.04, 2600, 2, 0.05 * v)); },
+  tick() { snd(t => nb(t, 0.03, 3500, 3, 0.1)); },
+  over() { snd(t => { tn(t, 300, 1.8, 0.3, 'sawtooth', 0, 40, 0.02); nb(t, 1.5, 300, 0.7, 0.3, 0, 'lowpass'); }); },
+};
+// ---------- state ----------
+const G = { state: 'title', night: 1, t: 0, isNight: false, diff: 1 };
+const P = { x: 0, z: 6, yaw: Math.PI, pitch: 0, r: 0.4, hp: 100, hunger: 100, maxHp: 100, hurtT: 0, walk: 0, swing: 0, cd: 0, tool: 0, sprint: false, armor: 0 };
+const INV = { log: 0, scrap: 0, berry: 0, raw: 0, cooked: 0, dia: 0, bullets: 0 };
+const TOOLS = { axe: 1, spear: 0, rifle: 0 }; const FIRE = { x: 0, z: 0, fuel: 120, lvl: 1, max: 240 }; const KIDS = { found: 0, total: 5 };
+const DAYLEN = 110, NIGHTLEN = 70, CYCLE = DAYLEN + NIGHTLEN;
+const MAP = 68;
+// ---------- world ----------
+const OBS = [], CELL = 6, GRID = new Map(); const ck = (i, j) => i * 1000 + j;
+function addObs(o) { OBS.push(o); const k = ck(Math.floor((o.x + 100) / CELL), Math.floor((o.z + 100) / CELL)); let a = GRID.get(k); if (!a) GRID.set(k, a = []); a.push(o); return o; }
+function nearObs(x, z) { const i = Math.floor((x + 100) / CELL), j = Math.floor((z + 100) / CELL), out = []; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const l = GRID.get(ck(i + a, j + b)); if (l) for (const o of l) if (!o.dead) out.push(o); } return out; }
+function pushOut(e, r) { for (let it = 0; it < 3; it++) { let mv = false; for (const o of nearObs(e.x, e.z)) { const dx = e.x - o.x, dz = e.z - o.z, d = Math.hypot(dx, dz), m = r + o.r; if (d < m && d > 1e-6) { const k = (m - d) / d; e.x += dx * k; e.z += dz * k; mv = true; } else if (d <= 1e-6) { e.x += m; mv = true; } } if (!mv) break; } }
+const TREES = [], BUSHES = [], SCRAPS = [], CHESTS = [], INTS = [];
+let treeMesh = null, coneA = null, coneB = null; const _o = new THREE.Object3D(), _zero = new THREE.Matrix4().makeScale(0, 0, 0);
+function buildWorld() {
+  const g = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), MAT('grass')); TEX.grass.repeat.set(100, 100); g.rotation.x = -Math.PI / 2; scene.add(g);
+  const clear = new THREE.Mesh(new THREE.CircleGeometry(9, 28), MAT('dirt')); TEX.dirt.repeat.set(4, 4); clear.rotation.x = -Math.PI / 2; clear.position.y = 0.02; scene.add(clear);
+  const rnd = mulberry32(2024), N = TOUCH ? 420 : 640;
+  const trunkG = new THREE.CylinderGeometry(0.25, 0.4, 3, 6), c1G = new THREE.ConeGeometry(2.0, 4.2, 8), c2G = new THREE.ConeGeometry(1.4, 3.4, 8);
+  treeMesh = new THREE.InstancedMesh(trunkG, MAT(0x4a3020), N); coneA = new THREE.InstancedMesh(c1G, MAT(0xffffff), N); coneB = new THREE.InstancedMesh(c2G, MAT(0xffffff), N); scene.add(treeMesh, coneA, coneB);
+  let n = 0; const used = [];
+  for (let tries = 0; tries < N * 6 && n < N; tries++) { const x = (rnd() - 0.5) * 2 * (MAP + 8), z = (rnd() - 0.5) * 2 * (MAP + 8); if (Math.hypot(x, z) < 11) continue; if (Math.abs(x) < MAP - 6 && Math.abs(z) < MAP - 6 && used.some(u => (u[0] - x) ** 2 + (u[1] - z) ** 2 < 5)) continue; used.push([x, z]); const s = 0.8 + rnd() * 0.7;
+    _o.position.set(x, 1.5 * s, z); _o.scale.set(s, s, s); _o.rotation.set(0, rnd() * 6, 0); _o.updateMatrix(); treeMesh.setMatrixAt(n, _o.matrix);
+    _o.position.set(x, 3.2 * s + 1.0, z); _o.updateMatrix(); coneA.setMatrixAt(n, _o.matrix); _o.position.set(x, 5.6 * s + 1.0, z); _o.updateMatrix(); coneB.setMatrixAt(n, _o.matrix);
+    const col = new THREE.Color().setHSL(0.33 + rnd() * 0.05, 0.4 + rnd() * 0.15, 0.16 + rnd() * 0.1); coneA.setColorAt(n, col); coneB.setColorAt(n, col);
+    const o = addObs({ x, z, r: 0.5 * s, type: 'tree', idx: n, hp: 3, s }); TREES.push(o); n++; }
+  treeMesh.count = coneA.count = coneB.count = n; treeMesh.instanceMatrix.needsUpdate = coneA.instanceMatrix.needsUpdate = coneB.instanceMatrix.needsUpdate = true; if (coneA.instanceColor) coneA.instanceColor.needsUpdate = coneB.instanceColor.needsUpdate = true;
+  // big rocks
+  for (let i = 0; i < 40; i++) { const x = (rnd() - 0.5) * 2 * (MAP - 4), z = (rnd() - 0.5) * 2 * (MAP - 4); if (Math.hypot(x, z) < 14) continue; const s = 0.8 + rnd() * 1.6, m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), MAT('rock')); m.position.set(x, s * 0.5, z); m.rotation.set(rnd() * 3, rnd() * 3, 0); scene.add(m); addObs({ x, z, r: s * 0.85, type: 'rock' }); }
+  // berry bushes, scrap piles, chests
+  for (let i = 0; i < 40; i++) { const x = (rnd() - 0.5) * 2 * (MAP - 6), z = (rnd() - 0.5) * 2 * (MAP - 6); if (Math.hypot(x, z) < 12) continue; const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 6), MAT(0x2a5a28)); b.position.y = 0.55; b.scale.y = 0.8; g.add(b); const ber = []; for (let k = 0; k < 7; k++) { const q = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5, 4), MAT(0xd02040, { emissive: 0x601020, emissiveIntensity: 0.5 })); q.position.set(Math.cos(k * 0.9) * 0.55, 0.5 + (k % 3) * 0.15, Math.sin(k * 0.9) * 0.55); g.add(q); ber.push(q); } g.position.set(x, 0, z); scene.add(g); const o = { type: 'bush', x, z, r: 2.2, g, ber, has: true }; BUSHES.push(o); INTS.push(o); addObs({ x, z, r: 0.6, type: 'bushc' }); }
+  for (let i = 0; i < 26; i++) { const x = (rnd() - 0.5) * 2 * (MAP - 6), z = (rnd() - 0.5) * 2 * (MAP - 6); if (Math.hypot(x, z) < 14) continue; const g = new THREE.Group(); for (let k = 0; k < 4; k++) { const m = boxMesh(0.5 + rnd() * 0.4, 0.15 + rnd() * 0.2, 0.4 + rnd() * 0.3, MAT(0x8a8f96, { metalness: 0.5, roughness: 0.5 }), 1); m.position.set(rnd() - 0.5, 0.15 + k * 0.12, rnd() - 0.5); m.rotation.y = rnd() * 3; g.add(m); } g.position.set(x, 0, z); scene.add(g); const o = { type: 'scrap', x, z, r: 2.2, g, has: true }; SCRAPS.push(o); INTS.push(o); }
+  for (let i = 0; i < 12; i++) { const x = (rnd() - 0.5) * 2 * (MAP - 8), z = (rnd() - 0.5) * 2 * (MAP - 8); if (Math.hypot(x, z) < 20) continue; const g = new THREE.Group(); const bx = boxMesh(0.9, 0.55, 0.6, MAT('wood'), 0.6); bx.position.y = 0.28; g.add(bx); const lid = boxMesh(0.95, 0.15, 0.65, MAT(0x8a6a2c, { emissive: 0x3a2a08, emissiveIntensity: 0.4 }), 0.6); lid.position.y = 0.62; g.add(lid); const gl = new THREE.PointLight(0xffd070, 0.5, 5, 2); gl.position.y = 1; g.add(gl); g.position.set(x, 0, z); g.rotation.y = rnd() * 6; scene.add(g); const o = { type: 'chest', x, z, r: 2.3, g, lid, has: true }; CHESTS.push(o); INTS.push(o); addObs({ x, z, r: 0.6, type: 'chestc' }); }
+  buildCamp(); buildKids();
+  // sky
+  const moonM = new THREE.Mesh(new THREE.SphereGeometry(6, 18, 12), new THREE.MeshBasicMaterial({ color: 0xdfe6ff, fog: false })); moonM.position.set(-80, 90, -140); scene.add(moonM); window.moonM = moonM;
+  const st = new THREE.BufferGeometry(), sp = new Float32Array(700 * 3); for (let i = 0; i < 700; i++) { const a = Math.random() * 6.28, e = 0.15 + Math.random() * 1.2; sp[i * 3] = Math.cos(a) * 170 * Math.cos(e); sp[i * 3 + 1] = 12 + Math.sin(e) * 130; sp[i * 3 + 2] = Math.sin(a) * 170 * Math.cos(e); } st.setAttribute('position', new THREE.BufferAttribute(sp, 3)); window.stars = new THREE.Points(st, new THREE.PointsMaterial({ color: 0xffffff, size: 1.4, sizeAttenuation: false, fog: false, transparent: true, opacity: 0 })); scene.add(window.stars);
+}
+let flames = [], embers = [];
+function buildCamp() {
+  const ring = new THREE.Group(); for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28, s = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 0), MAT('rock')); s.position.set(Math.cos(a) * 0.9, 0.2, Math.sin(a) * 0.9); ring.add(s); } for (let i = 0; i < 4; i++) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.1, 6), MAT(0x4a3020)); l.position.y = 0.2; l.rotation.set(Math.PI / 2, 0, i * 0.8); ring.add(l); } scene.add(ring);
+  for (let i = 0; i < 3; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.4 - i * 0.1, 1.2 - i * 0.2, 6), new THREE.MeshBasicMaterial({ color: [0xff5a10, 0xff9a20, 0xffe060][i], transparent: true, opacity: 0.9 })); f.position.y = 0.7; scene.add(f); flames.push(f); }
+  for (let i = 0; i < 12; i++) { const e = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.05), new THREE.MeshBasicMaterial({ color: 0xffb040 })); e.userData = { ph: Math.random() * 6, x: rr(-0.4, 0.4), z: rr(-0.4, 0.4) }; scene.add(e); embers.push(e); }
+  addObs({ x: 0, z: 0, r: 1.0, type: 'fire' }); INTS.push({ type: 'fire', x: 0, z: 0, r: 2.6 });
+  const bench = new THREE.Group(); const top = boxMesh(1.8, 0.12, 0.9, MAT('wood'), 1); top.position.y = 0.95; bench.add(top); for (const [x, z] of [[-0.8, -0.35], [0.8, -0.35], [-0.8, 0.35], [0.8, 0.35]]) { const l = boxMesh(0.12, 0.95, 0.12, MAT('wood'), 1); l.position.set(x, 0.47, z); bench.add(l); } const anv = boxMesh(0.4, 0.2, 0.25, MAT(0x333840, { metalness: 0.6 }), 1); anv.position.set(0.4, 1.1, 0); bench.add(anv); bench.position.set(5, 0, -1); bench.rotation.y = 0.4; scene.add(bench); addObs({ x: 5, z: -1, r: 1.1, type: 'bench' }); INTS.push({ type: 'bench', x: 5, z: -1, r: 2.8 });
+  for (const [x, z, ry] of [[-6, -4, 0.5], [-7, 3, -0.4]]) { const t = new THREE.Mesh(new THREE.ConeGeometry(1.7, 2.2, 4), MAT(0xb8a070, { side: THREE.DoubleSide })); t.position.set(x, 1.1, z); t.rotation.y = ry + 0.78; scene.add(t); addObs({ x, z, r: 1.3, type: 'tent' }); }
+  const lamp = new THREE.PointLight(0xffa050, 0, 0); scene.add(lamp);
+}
+// ---------- lost kids ----------
+const KIDSL = [];
+function buildKids() {
+  const spots = [[40, 20], [-38, 34], [30, -45], [-50, -30], [6, 58]]; const cols = [0xd04a4a, 0x4a7ad0, 0xd0c040, 0x50b070, 0xb060c0];
+  spots.forEach(([x, z], i) => { const t = new THREE.Mesh(new THREE.ConeGeometry(1.6, 2, 4), MAT(0x9a7a4a, { side: THREE.DoubleSide })); t.position.set(x, 1, z); t.rotation.y = 0.78; scene.add(t); addObs({ x, z, r: 1.3, type: 'tent' }); const l = new THREE.PointLight(0xffa050, 0.9, 12, 2); l.position.set(x + 1.5, 1.2, z + 1.5); scene.add(l); const fm = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffb040 })); fm.position.copy(l.position); scene.add(fm);
+    const k = buildKid(cols[i]); k.g.position.set(x + 1.2, 0, z + 1.2); scene.add(k.g); const o = { type: 'kid', x: x + 1.2, z: z + 1.2, r: 2.5, g: k.g, has: true, i, camp: [x, z], l }; KIDSL.push(o); INTS.push(o); });
+}
+function buildKid(col) { const g = new THREE.Group(), m = (geo, c, y) => { const q = new THREE.Mesh(geo, MAT(c)); q.position.y = y; g.add(q); return q; }; m(new THREE.BoxGeometry(0.3, 0.4, 0.2), col, 0.62); m(new THREE.BoxGeometry(0.22, 0.22, 0.22), 0xe8c8a0, 0.98); m(new THREE.BoxGeometry(0.1, 0.4, 0.1), 0x3a3a50, 0.2).position.x = -0.07; m(new THREE.BoxGeometry(0.1, 0.4, 0.1), 0x3a3a50, 0.2).position.x = 0.07; return { g }; }
+// ---------- animals and monsters ----------
+const MOBS = [];
+function buildQuad(kind) {
+  const g = new THREE.Group(); const cfg = { wolf: { c: 0x6a6e76, w: 0.5, h: 0.5, l: 1.1, s: 1 }, alpha: { c: 0x1a1a22, w: 0.5, h: 0.5, l: 1.1, s: 1.9 }, deer: { c: 0x9a6a3a, w: 0.45, h: 0.6, l: 1.1, s: 1.1 }, bunny: { c: 0xe8e0d0, w: 0.25, h: 0.25, l: 0.4, s: 1 } }[kind];
+  const mat = MAT(cfg.c, { emissive: kind === 'alpha' ? 0x200000 : 0x000000 }), add = (geo, m, x, y, z) => { const q = new THREE.Mesh(geo, m); q.position.set(x, y, z); g.add(q); return q; };
+  const hh = kind === 'deer' ? 0.95 : kind === 'bunny' ? 0.2 : 0.65;
+  add(new THREE.BoxGeometry(cfg.w, cfg.h, cfg.l), mat, 0, hh, 0); add(new THREE.BoxGeometry(cfg.w * 0.7, cfg.h * 0.7, cfg.l * 0.35), mat, 0, hh + (kind === 'deer' ? 0.35 : 0.08), cfg.l * 0.6).name = 'head';
+  const legs = []; for (const [x, z] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) { const p = new THREE.Group(); p.position.set(x * cfg.w * 0.35, hh - cfg.h * 0.3, z * cfg.l * 0.35); const lg = new THREE.Mesh(new THREE.BoxGeometry(0.1, hh - 0.1, 0.1), mat); lg.position.y = -(hh - 0.1) / 2 + 0.05; p.add(lg); g.add(p); legs.push(p); }
+  if (kind === 'wolf' || kind === 'alpha') { add(new THREE.BoxGeometry(0.1, 0.1, 0.5), mat, 0, hh + 0.1, -cfg.l * 0.6).rotation.x = 0.5; for (const x of [-1, 1]) { const e = add(new THREE.BoxGeometry(0.05, 0.05, 0.03), new THREE.MeshBasicMaterial({ color: 0xff3020 }), x * 0.1, hh + 0.14, cfg.l * 0.78); } }
+  if (kind === 'deer') for (const x of [-1, 1]) add(new THREE.BoxGeometry(0.04, 0.4, 0.04), MAT(0xd8c8a0), x * 0.1, hh + 0.9, cfg.l * 0.55).rotation.z = x * 0.4;
+  g.scale.setScalar(cfg.s); scene.add(g); return { g, legs };
+}
+function buildCultist() { const g = new THREE.Group(), robe = MAT(0x3a1820), add = (geo, m, x, y, z) => { const q = new THREE.Mesh(geo, m); q.position.set(x, y, z); g.add(q); return q; }; add(new THREE.CylinderGeometry(0.22, 0.45, 1.4, 8), robe, 0, 0.75, 0); add(new THREE.SphereGeometry(0.24, 8, 6), robe, 0, 1.65, 0); add(new THREE.BoxGeometry(0.12, 0.04, 0.03), new THREE.MeshBasicMaterial({ color: 0xff3020 }), 0, 1.65, 0.2); const tor = add(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 5), MAT(0x4a3020), 0.35, 1.0, 0.25); const fl = add(new THREE.SphereGeometry(0.1, 6, 5), new THREE.MeshBasicMaterial({ color: 0xff8a20 }), 0.35, 1.36, 0.25); g.scale.setScalar(1.1); scene.add(g); const arms = [new THREE.Group(), new THREE.Group()]; return { g, legs: [], torch: fl }; }
+const MT = { wolf: { hp: 40, speed: 5.0, dmg: 8, range: 1.5, pts: 0, hostile: true, meat: 1 }, alpha: { hp: 380, speed: 5.4, dmg: 22, range: 2.2, hostile: true, meat: 4 }, cultist: { hp: 90, speed: 3.6, dmg: 13, range: 1.6, hostile: true, meat: 0 }, deer: { hp: 45, speed: 6.5, dmg: 0, range: 0, hostile: false, meat: 3 }, bunny: { hp: 12, speed: 5.5, dmg: 0, range: 0, hostile: false, meat: 1 } };
+function spawnMob(kind, x, z) {
+  const T = MT[kind], m = kind === 'cultist' ? buildCultist() : buildQuad(kind), scale = 1 + (G.night - 1) * 0.015, d = [0.75, 1, 1.35][G.diff];
+  const mob = { kind, T, m, g: m.g, x, z, hp: T.hp * (T.hostile ? scale : 1) * (T.hostile ? d : 1), yaw: Math.random() * 6, atk: 0, phase: Math.random() * 6, wander: rr(0, 4), tx: x, tz: z, dead: 0, growl: rr(2, 7), stuck: 0, lx: x, lz: z, st: 0 };
+  MOBS.push(mob); return mob;
+}
+function killMob(m) { m.dead = 0.001; SFX.die(m.x, m.z); const n = m.T.meat; if (n) { drops.push({ x: m.x, z: m.z, kind: 'raw', n, age: 0, g: dropMesh(0xc04040) }); } if (m.kind === 'alpha') { drops.push({ x: m.x + 0.6, z: m.z, kind: 'dia', n: 2, age: 0, g: dropMesh(0x40e0ff) }); drops.push({ x: m.x, z: m.z + 0.6, kind: 'scrap', n: 3, age: 0, g: dropMesh(0x9aa0a8) }); } else if (m.kind === 'cultist') drops.push({ x: m.x, z: m.z, kind: 'scrap', n: 2, age: 0, g: dropMesh(0x9aa0a8) }); }
+const drops = []; function dropMesh(c) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), MAT(c, { emissive: c, emissiveIntensity: 0.5 })); scene.add(m); return m; }
+const angD = (a, b) => { let d = b - a; while (d > Math.PI) d -= 6.2832; while (d < -Math.PI) d += 6.2832; return d; };
+function fireOn() { return FIRE.fuel > 0; } const safeR = () => 4.5 + FIRE.lvl * 2;
+function updateMobs(dt) {
+  for (let i = MOBS.length - 1; i >= 0; i--) {
+    const m = MOBS[i], T = m.T;
+    if (m.dead) { m.dead += dt; const k = Math.min(1, m.dead / 0.5); m.g.rotation.z = 1.5 * k; m.g.position.y = -0.1 * k; if (m.dead > 2) { scene.remove(m.g); MOBS.splice(i, 1); } continue; }
+    const dx = P.x - m.x, dz = P.z - m.z, d = Math.hypot(dx, dz); let sp = 0, tx = m.x, tz = m.z, flee = false;
+    if (T.hostile) {
+      const aggro = G.isNight ? 60 : 22;
+      const fdx = m.x - FIRE.x, fdz = m.z - FIRE.z, fd = Math.hypot(fdx, fdz);
+      if (fireOn() && fd < safeR() + 0.5) { tx = m.x + fdx / fd * 5; tz = m.z + fdz / fd * 5; sp = T.speed * 0.9; flee = true; }
+      else if (d < aggro) { tx = P.x; tz = P.z; sp = d > T.range * 0.8 ? T.speed : 0; if (fireOn() && Math.hypot(P.x, P.z) < safeR() && fd < safeR() + 3) { const a = Math.atan2(m.z - FIRE.z, m.x - FIRE.x) + 0.3; tx = FIRE.x + Math.cos(a) * (safeR() + 1.5); tz = FIRE.z + Math.sin(a) * (safeR() + 1.5); sp = T.speed * 0.6; } }
+      else { m.wander -= dt; if (m.wander <= 0) { m.wander = rr(3, 7); m.tx = clamp(m.x + rr(-15, 15), -MAP, MAP); m.tz = clamp(m.z + rr(-15, 15), -MAP, MAP); } tx = m.tx; tz = m.tz; sp = T.speed * 0.35; }
+    } else {
+      if (d < 11) { tx = m.x - dx; tz = m.z - dz; sp = T.speed; flee = true; } else { m.wander -= dt; if (m.wander <= 0) { m.wander = rr(3, 8); m.tx = clamp(m.x + rr(-8, 8), -MAP, MAP); m.tz = clamp(m.z + rr(-8, 8), -MAP, MAP); } tx = m.tx; tz = m.tz; sp = Math.hypot(tx - m.x, tz - m.z) > 0.5 ? T.speed * 0.25 : 0; }
+    }
+    const ex = tx - m.x, ez = tz - m.z, ed = Math.hypot(ex, ez) || 1; let mx = ex / ed, mz = ez / ed;
+    if (m.stuck > 0) { m.stuck -= dt; const a = Math.atan2(mz, mx) + (m.side || 1.4); mx = Math.cos(a); mz = Math.sin(a); }
+    m.x += mx * sp * dt; m.z += mz * sp * dt; pushOut(m, m.kind === 'alpha' ? 0.9 : 0.4); m.x = clamp(m.x, -MAP, MAP); m.z = clamp(m.z, -MAP, MAP);
+    m.st += dt; if (m.st > 0.8) { if (sp > 0 && Math.hypot(m.x - m.lx, m.z - m.lz) < sp * 0.15) { m.stuck = 0.7; m.side = Math.random() < 0.5 ? 1.4 : -1.4; } m.lx = m.x; m.lz = m.z; m.st = 0; }
+    if (sp > 0.1) m.yaw += angD(m.yaw, Math.atan2(mx, mz)) * Math.min(1, dt * 9);
+    m.g.position.set(m.x, 0, m.z); m.g.rotation.y = m.yaw; m.phase += dt * sp * 2.2; const s = Math.sin(m.phase);
+    if (m.m.legs.length) m.m.legs.forEach((l, k) => l.rotation.x = s * 0.7 * (k % 2 ? -1 : 1) * (k > 1 ? -1 : 1)); if (m.m.torch) m.m.torch.scale.setScalar(0.8 + Math.random() * 0.4); m.g.position.y = Math.abs(s) * 0.03;
+    if (T.hostile) { m.growl -= dt; if (m.growl <= 0 && d < 40) { m.growl = rr(3, 8); SFX.growl(m.x, m.z, m.kind === 'alpha'); } m.atk -= dt; if (!flee && d < T.range + 0.4 && m.atk <= 0 && G.state === 'play') { m.atk = 0.9; hurtPlayer(T.dmg * [0.7, 1, 1.4][G.diff] * (1 - P.armor), m); } }
+  }
+}
+function hurtPlayer(dmg, m) { P.hp -= dmg; P.hurtT = 0; SFX.hurt(); if (m) SFX.claw(m.x, m.z); const h = $('hurt'); h.style.opacity = 1; setTimeout(() => h.style.opacity = 0, 180); if (P.hp <= 0) die('You were taken by the forest on night ' + G.night + '.'); }
+// ---------- spawning, day/night ----------
+let spawnT = 3, dayAnimT = 0; const SKY = { day: new THREE.Color(0x8ab4d8), dusk: new THREE.Color(0xe08a50), night: new THREE.Color(0x05080f) };
+function phase() { const t = G.t % CYCLE; return t; }
+function updateTime(dt) {
+  G.t += dt; const t = G.t % CYCLE, was = G.isNight; const night = t >= DAYLEN; G.isNight = night;
+  if (night && !was) { SFX.horn(); big('NIGHT ' + G.night + ' BEGINS', 3000); }
+  if (!night && was) { dawn(); }
+  let k; // 0 = bright day, 1 = deep night
+  if (t < DAYLEN - 15) k = 0; else if (t < DAYLEN) k = (t - (DAYLEN - 15)) / 15 * 0.8; else if (t < DAYLEN + 8) k = 0.8 + (t - DAYLEN) / 8 * 0.2; else if (t < CYCLE - 10) k = 1; else k = 1 - (t - (CYCLE - 10)) / 10;
+  const col = k < 0.5 ? SKY.day.clone().lerp(SKY.dusk, k * 2) : SKY.dusk.clone().lerp(SKY.night, (k - 0.5) * 2); scene.background.copy(col); scene.fog.color.copy(col); scene.fog.near = lerp(25, 6, k); scene.fog.far = lerp(95, 42, k);
+  ambient.intensity = lerp(0.9, 0.38, k); ambient.color.set(k > 0.5 ? 0x7088c0 : 0xffffff); sun.intensity = lerp(0.9, 0.35, k); sun.color.set(k > 0.5 ? 0x9db4e8 : 0xfff0d0); window.stars.material.opacity = clamp((k - 0.6) * 2.5, 0, 1); lantern.intensity = lerp(0, 1.1, clamp((k - 0.2) * 1.5, 0, 1));
+  // spawns
+  spawnT -= dt; if (spawnT <= 0) { spawnT = night ? 3.2 : 8; const wolves = MOBS.filter(m => !m.dead && m.kind === 'wolf').length; const cap = night ? Math.min(TOUCH ? 10 : 16, 2 + Math.floor(G.night * 0.55)) : 2; const rcap = [0.7, 1, 1.3][G.diff]; if (wolves < cap * rcap) { const a = Math.random() * 6.28, dd = rr(34, 50); spawnMob('wolf', clamp(P.x + Math.cos(a) * dd, -MAP, MAP), clamp(P.z + Math.sin(a) * dd, -MAP, MAP)); }
+    if (night) { if (G.night % 5 === 0 && !G.alphaSpawned) { G.alphaSpawned = true; const a = Math.random() * 6.28; spawnMob('alpha', clamp(P.x + Math.cos(a) * 45, -MAP, MAP), clamp(P.z + Math.sin(a) * 45, -MAP, MAP)); big('An ALPHA wolf is hunting you!', 3000); SFX.howl(P.x, P.z); }
+      const cc = G.night >= 10 ? Math.min(6, Math.floor((G.night - 4) / 6)) : 0; if (MOBS.filter(m => !m.dead && m.kind === 'cultist').length < cc) { const a = Math.random() * 6.28; spawnMob('cultist', clamp(P.x + Math.cos(a) * 42, -MAP, MAP), clamp(P.z + Math.sin(a) * 42, -MAP, MAP)); } }
+    const animals = MOBS.filter(m => !m.dead && !m.T.hostile).length; if (!night && animals < 10) { const a = Math.random() * 6.28, dd = rr(25, 55), x = clamp(P.x + Math.cos(a) * dd, -MAP, MAP), z = clamp(P.z + Math.sin(a) * dd, -MAP, MAP); spawnMob(Math.random() < 0.5 ? 'deer' : 'bunny', x, z); } }
+  if (night) { howlT -= dt; if (howlT <= 0) { howlT = rr(14, 30); SFX.howl(P.x + rr(-60, 60), P.z + rr(-60, 60)); } }
+}
+let howlT = 8;
+function dawn() {
+  SFX.dawn(); for (let i = MOBS.length - 1; i >= 0; i--) { const m = MOBS[i]; if (m.T.hostile) { scene.remove(m.g); MOBS.splice(i, 1); } }
+  if (G.night >= 99) { win(); return; } G.night++; G.alphaSpawned = false; for (const b of BUSHES) { b.has = true; b.ber.forEach(q => q.visible = true); } for (const s of SCRAPS) { if (!s.has && Math.random() < 0.6) { s.has = true; s.g.visible = true; } }
+  for (const t of TREES) if (t.dead && Math.random() < 0.5) { t.dead = false; t.hp = 3; setTree(t, true); }
+  P.hp = Math.min(P.maxHp, P.hp + 30); big('You survived! Night ' + (G.night - 1) + ' of 99 done', 3500); saveGame();
+}
+function setTree(t, on) { const s = t.s; if (on) { _o.position.set(t.x, 1.5 * s, t.z); _o.scale.set(s, s, s); _o.rotation.set(0, 0, 0); _o.updateMatrix(); treeMesh.setMatrixAt(t.idx, _o.matrix); _o.position.set(t.x, 3.2 * s + 1.0, t.z); _o.updateMatrix(); coneA.setMatrixAt(t.idx, _o.matrix); _o.position.set(t.x, 5.6 * s + 1.0, t.z); _o.updateMatrix(); coneB.setMatrixAt(t.idx, _o.matrix); } else { treeMesh.setMatrixAt(t.idx, _zero); coneA.setMatrixAt(t.idx, _zero); coneB.setMatrixAt(t.idx, _zero); } treeMesh.instanceMatrix.needsUpdate = coneA.instanceMatrix.needsUpdate = coneB.instanceMatrix.needsUpdate = true; }
+// ---------- hand items ----------
+const hand = new THREE.Group(); cam.add(hand); hand.scale.setScalar(0.72); hand.position.set(0.28, -0.28, -0.5); const handModels = [];
+function buildHand() {
+  const M = (c, o) => MAT(c, Object.assign({ roughness: 0.6 }, o || {})); const mk = (arr) => { const g = new THREE.Group(); arr.forEach(([geo, c, x, y, z, rx, ry, rz]) => { const m = new THREE.Mesh(geo, M(c)); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, rz || 0); g.add(m); }); g.visible = false; hand.add(g); return g; };
+  handModels[0] = mk([[new THREE.BoxGeometry(0.04, 0.5, 0.04), 0x6a4a28, 0, 0.12, 0], [new THREE.BoxGeometry(0.22, 0.14, 0.03), 0x9aa0a8, 0.1, 0.34, 0]]);
+  handModels[1] = mk([[new THREE.BoxGeometry(0.03, 0.9, 0.03), 0x6a4a28, 0, 0.3, 0], [new THREE.ConeGeometry(0.05, 0.2, 5), 0xc0c4cc, 0, 0.82, 0]]);
+  handModels[2] = mk([[new THREE.BoxGeometry(0.05, 0.07, 0.6), 0x2a2a2a, 0, 0, -0.1], [new THREE.BoxGeometry(0.05, 0.09, 0.2), 0x5a3a1a, 0, -0.02, 0.28]]);
+  handModels[0].rotation.set(0.2, 0, 0.1); handModels[1].rotation.set(0.3, 0, 0.1); handModels[2].rotation.set(0, 0, 0); handModels[0].visible = true;
+}
+function toolOK(i) { return i === 0 ? TOOLS.axe > 0 : i === 1 ? TOOLS.spear > 0 : TOOLS.rifle > 0; }
+function setTool(i) { if (!toolOK(i)) return; P.tool = i; handModels.forEach((m, k) => m.visible = k === i); renderHotbar(); SFX.tick(); }
+const TOOLN = ['Axe', 'Spear', 'Rifle']; const TOOLE = ['🪓', '🔱', '🔫'];
+function renderHotbar() { const h = $('hotbar'); h.innerHTML = ''; TOOLN.forEach((n, i) => { const d = document.createElement('div'); d.className = 'slot' + (i === P.tool ? ' on' : '') + (toolOK(i) ? '' : ''); d.style.opacity = toolOK(i) ? 1 : 0.3; d.innerHTML = '<b>' + (i + 1) + '</b>' + TOOLE[i] + '<small>' + (i === 0 && TOOLS.axe > 1 ? 'Iron ' : '') + n + (i === 2 ? ' ' + INV.bullets : '') + '</small>'; d.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (G.state === 'play') setTool(i); }); h.appendChild(d); }); }
+// ---------- attack / chop ----------
+function attack() {
+  if (G.state !== 'play' || P.cd > 0) return; const tool = P.tool;
+  if (tool === 2) { if (INV.bullets <= 0) { SFX.deny(); big('No bullets', 800); P.cd = 0.4; return; } INV.bullets--; P.cd = 0.7; SFX.shoot(); P.swing = 1; hitscan(); renderInv(); renderHotbar(); return; }
+  P.cd = tool === 1 ? 0.55 : 0.5; P.swing = 1; SFX.swing();
+  const reach = tool === 1 ? 3.6 : 2.7, dmg = tool === 1 ? 24 : TOOLS.axe > 1 ? 24 : 15; const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
+  let best = null, bd = 99; for (const m of MOBS) { if (m.dead) continue; const dx = m.x - P.x, dz = m.z - P.z, d = Math.hypot(dx, dz) - (m.kind === 'alpha' ? 0.9 : 0.3); if (d > reach || (dx * fx + dz * fz) / Math.max(0.01, Math.hypot(dx, dz)) < 0.55) continue; if (d < bd) { bd = d; best = m; } }
+  if (best) { best.hp -= dmg; SFX.hit(best.x, best.z); best.x += fx * 0.4; best.z += fz * 0.4; if (best.hp <= 0) killMob(best); flashDot(); return; }
+  if (tool === 0) { let bt = null; bd = 99; for (const o of nearObs(P.x + fx * 1.5, P.z + fz * 1.5)) { if (o.type !== 'tree') continue; const dx = o.x - P.x, dz = o.z - P.z, d = Math.hypot(dx, dz) - o.r; if (d > 2.4 || (dx * fx + dz * fz) / Math.max(0.01, Math.hypot(dx, dz)) < 0.7) continue; if (d < bd) { bd = d; bt = o; } } if (bt) { bt.hp -= TOOLS.axe > 1 ? 1.6 : 1; SFX.chop(); bt.shake = 0.2; if (bt.hp <= 0) { bt.dead = true; setTree(bt, false); SFX.fell(); INV.log += 3; SFX.pickup(); renderInv(); big('+3 logs', 900); } flashDot(); } }
+}
+function flashDot() { const d = $('dot'); d.classList.add('hot'); setTimeout(() => d.classList.remove('hot'), 100); }
+function hitscan() { const cp = Math.cos(P.pitch), dx = -Math.sin(P.yaw) * cp, dy = Math.sin(P.pitch), dz = -Math.cos(P.yaw) * cp; let best = null, bt = 70; for (const m of MOBS) { if (m.dead) continue; const s = m.kind === 'alpha' ? 1.9 : 1; const cx = m.x - P.x, cy = 0.8 * s - 1.65, cz = m.z - P.z, t = cx * dx + cy * dy + cz * dz; if (t < 0.5 || t > bt) continue; const px = P.x + dx * t - m.x, py = 1.65 + dy * t - 0.8 * s, pz = P.z + dz * t - m.z; if (px * px + pz * pz < (0.6 * s) ** 2 && Math.abs(py) < 0.8 * s) { best = m; bt = t; } } if (best) { best.hp -= 70; SFX.hit(best.x, best.z); if (best.hp <= 0) killMob(best); flashDot(); } }
+// ---------- interactions ----------
+let TARGET = null;
+function findTarget() { const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let best = null, bs = 1e9;
+  for (const it of INTS) { if (it.has === false) continue; const dx = it.x - P.x, dz = it.z - P.z, d = Math.hypot(dx, dz); if (d > it.r) continue; const c = d < 1.2 ? 1 : (dx * fx + dz * fz) / d; if (c < 0.45) continue; const s = d * (2 - c); if (s < bs) { bs = s; best = it; } }
+  for (const dr of drops) { const d = Math.hypot(dr.x - P.x, dr.z - P.z); if (d < 1.6) { return { type: 'drop', ref: dr, x: dr.x, z: dr.z }; } } return best; }
+function promptFor(t) { switch (t.type) { case 'fire': return FIRE.fuel > 0 && INV.raw > 0 ? 'Add log · cook meat' : 'Add a log (' + INV.log + ')'; case 'bench': return 'Crafting bench'; case 'bush': return 'Pick berries'; case 'scrap': return 'Search scrap'; case 'chest': return 'Open chest'; case 'kid': return 'Rescue the child!'; case 'drop': return 'Pick up'; } return ''; }
+const GIVE = { raw: 'raw meat', scrap: 'scrap', dia: 'diamonds' };
+function useThing() { if (G.state !== 'play') return; const t = TARGET; if (!t) return;
+  switch (t.type) {
+    case 'fire': { let did = false; if (INV.raw > 0 && FIRE.fuel > 0) { INV.cooked += INV.raw; INV.raw = 0; SFX.craft(); big('Meat cooked!', 900); did = true; } if (INV.log > 0 && FIRE.fuel < FIRE.max) { INV.log--; FIRE.fuel = Math.min(FIRE.max, FIRE.fuel + 45); SFX.fuel(); did = true; } if (!did) { SFX.deny(); big(INV.log <= 0 ? 'You need logs! Chop trees.' : 'The fire is full', 1000); } renderInv(); break; }
+    case 'bench': openCraft(); break;
+    case 'bush': t.has = false; t.ber.forEach(q => q.visible = false); INV.berry += 3 + (Math.random() * 3 | 0); SFX.pickup(); big('+berries', 800); renderInv(); break;
+    case 'scrap': t.has = false; t.g.visible = false; const n = 2 + (Math.random() * 3 | 0); INV.scrap += n; SFX.pickup(); big('+' + n + ' scrap', 800); renderInv(); break;
+    case 'chest': { t.has = false; t.lid.position.y = 0.9; t.lid.rotation.x = -0.8; const d = Math.random() < 0.5 ? 1 + (Math.random() * 2 | 0) : 0, s = 2 + (Math.random() * 4 | 0); INV.scrap += s; INV.dia += d; if (Math.random() < 0.5) INV.bullets += 4; SFX.chime(); big('Chest: ' + s + ' scrap' + (d ? ', ' + d + ' diamonds' : ''), 1800); renderInv(); break; }
+    case 'kid': { t.has = false; KIDS.found++; SFX.chime(); const k = t; k.g.position.set(-3 + k.i * 1.3, 0, 7 + (k.i % 2)); k.l.intensity = 0; INV.dia += 2; INV.scrap += 4; P.maxHp += 10; P.hp = Math.min(P.maxHp, P.hp + 20); big('Child rescued! (' + KIDS.found + '/' + KIDS.total + ')  +2 💎 +10 max HP', 3000); renderInv(); saveGame(); break; }
+    case 'drop': { const d = t.ref; if (d.kind === 'raw') INV.raw += d.n; else if (d.kind === 'dia') INV.dia += d.n; else INV.scrap += d.n; scene.remove(d.g); drops.splice(drops.indexOf(d), 1); SFX.pickup(); renderInv(); break; }
+  } }
+function eat() { if (G.state !== 'play') return; if (INV.cooked > 0) { INV.cooked--; P.hunger = Math.min(100, P.hunger + 45); P.hp = Math.min(P.maxHp, P.hp + 10); } else if (INV.berry > 0) { INV.berry--; P.hunger = Math.min(100, P.hunger + 12); } else if (INV.raw > 0) { INV.raw--; P.hunger = Math.min(100, P.hunger + 18); P.hp -= 4; } else { SFX.deny(); big('You have nothing to eat', 1000); return; } SFX.eat(); renderInv(); }
+function renderInv() { $('inv').innerHTML = '🪵 ' + INV.log + ' &nbsp; 🔩 ' + INV.scrap + ' &nbsp; 💎 ' + INV.dia + '<br>🍓 ' + INV.berry + ' &nbsp; 🥩 ' + INV.raw + ' &nbsp; 🍖 ' + INV.cooked + ' &nbsp; 🔫 ' + INV.bullets + '<br>🧒 ' + KIDS.found + '/' + KIDS.total; }
+// crafting
+const RECIPES = () => [
+  { n: '🔥 Upgrade campfire (level ' + FIRE.lvl + ' → ' + (FIRE.lvl + 1) + ')', d: 'Burns longer, safe zone grows, brighter', cost: { log: [8, 15, 25][FIRE.lvl - 1] || 99, scrap: [3, 8, 15][FIRE.lvl - 1] || 99, dia: FIRE.lvl >= 3 ? 2 : 0 }, ok: FIRE.lvl < 4, f: () => { FIRE.lvl++; FIRE.fuel = Math.min(FIRE.max, FIRE.fuel + 60); } },
+  { n: '🪓 Iron axe', d: 'Chop faster, hit harder', cost: { scrap: 6 }, ok: TOOLS.axe < 2, f: () => { TOOLS.axe = 2; } },
+  { n: '🔱 Spear', d: 'Long reach weapon', cost: { log: 3, scrap: 2 }, ok: !TOOLS.spear, f: () => { TOOLS.spear = 1; setTool(1); } },
+  { n: '🔫 Rifle', d: 'Needs bullets', cost: { scrap: 15, dia: 3 }, ok: !TOOLS.rifle, f: () => { TOOLS.rifle = 1; INV.bullets += 6; setTool(2); } },
+  { n: '🔫 5 Bullets', d: '', cost: { scrap: 2 }, ok: true, f: () => { INV.bullets += 5; } },
+  { n: '🩹 Medkit (heal 60)', d: 'Use now', cost: { scrap: 3 }, ok: true, f: () => { P.hp = Math.min(P.maxHp, P.hp + 60); } },
+  { n: '🛡️ Armor (take 20% less damage)', d: '', cost: { scrap: 10, dia: 2 }, ok: P.armor < 0.4, f: () => { P.armor = Math.min(0.4, P.armor + 0.2); } },
+];
+function openCraft() { G.padOpen = true; if (document.pointerLockElement) document.exitPointerLock(); drawCraft(); $('craft').classList.add('on'); }
+function drawCraft() { $('craftHave').textContent = 'You have: ' + INV.log + ' logs · ' + INV.scrap + ' scrap · ' + INV.dia + ' diamonds'; const box = $('recipes'); box.innerHTML = ''; for (const r of RECIPES()) { if (!r.ok) continue; const can = Object.entries(r.cost).every(([k, v]) => INV[k] >= v); const d = document.createElement('div'); d.className = 'rec'; d.innerHTML = '<span>' + r.n + '<small>' + r.d + ' — ' + Object.entries(r.cost).filter(([k, v]) => v).map(([k, v]) => v + ' ' + ({ log: 'logs', scrap: 'scrap', dia: 'diamonds' })[k]).join(', ') + '</small></span>'; const b = document.createElement('button'); b.className = 'btn small'; b.textContent = 'Make'; b.disabled = !can; b.onclick = () => { for (const [k, v] of Object.entries(r.cost)) INV[k] -= v; r.f(); SFX.craft(); renderInv(); renderHotbar(); drawCraft(); }; d.appendChild(b); box.appendChild(d); } }
+function closeCraft() { $('craft').classList.remove('on'); G.padOpen = false; if (G.state === 'play') lockPointer(); }
+// ---------- input ----------
+const keys = {}, joy = { x: 0, y: 0 }; let touchRun = false, mouseDown = false;
+function lockPointer() { if (TOUCH) return; try { const p = renderer.domElement.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+addEventListener('keydown', e => { keys[e.code] = true; if (G.padOpen) { if (e.code === 'KeyE' || e.code === 'Escape') closeCraft(); return; } if (G.state !== 'play' || e.repeat) return; if (e.code === 'KeyE') useThing(); else if (e.code === 'KeyF') eat(); else if (/^Digit[1-3]$/.test(e.code)) setTool(+e.code.slice(5) - 1); if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
+addEventListener('keyup', e => keys[e.code] = false); addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouseDown = false; });
+function look(dx, dy, k) { P.yaw -= dx * CFG.sens * k; P.pitch = clamp(P.pitch - dy * CFG.sens * k, -1.4, 1.4); }
+document.addEventListener('mousemove', e => { if (G.state === 'play' && document.pointerLockElement) look(e.movementX, e.movementY, 0.0022); });
+document.addEventListener('mousedown', e => { if (G.state === 'play' && e.button === 0) { if (document.pointerLockElement) { mouseDown = true; attack(); } else if (!TOUCH && !G.padOpen && e.target === renderer.domElement) lockPointer(); } });
+document.addEventListener('mouseup', () => mouseDown = false);
+addEventListener('wheel', e => { if (G.state !== 'play' || G.padOpen) return; let i = P.tool; for (let k = 0; k < 3; k++) { i = (i + (e.deltaY > 0 ? 1 : 2)) % 3; if (toolOK(i)) { setTool(i); break; } } }, { passive: true });
+document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && G.state === 'play' && !G.padOpen && !G.noPause) pauseGame(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'play' && !G.noPause) pauseGame(); });
+addEventListener('contextmenu', e => e.preventDefault());
+(function () { const stick = $('stick'), lz = $('lookzone'); let sid = null, lid = null, lx = 0, ly = 0, sx = 0, sy = 0;
+  stick.addEventListener('pointerdown', e => { sid = e.pointerId; stick.setPointerCapture(sid); const r = stick.getBoundingClientRect(); sx = r.left + r.width / 2; sy = r.top + r.height / 2; mv(e); e.preventDefault(); }); stick.addEventListener('pointermove', e => { if (e.pointerId === sid) mv(e); });
+  const end = e => { if (e.pointerId === sid) { sid = null; joy.x = joy.y = 0; stick.firstElementChild.style.transform = ''; } }; stick.addEventListener('pointerup', end); stick.addEventListener('pointercancel', end);
+  function mv(e) { let dx = e.clientX - sx, dy = e.clientY - sy; const d = Math.hypot(dx, dy), m = 55; if (d > m) { dx *= m / d; dy *= m / d; } joy.x = dx / m; joy.y = dy / m; stick.firstElementChild.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; if (Math.hypot(joy.x, joy.y) > 0.92) touchRun = true; else if (Math.hypot(joy.x, joy.y) < 0.8) touchRun = false; }
+  lz.addEventListener('pointerdown', e => { if (lid !== null) return; lid = e.pointerId; lz.setPointerCapture(lid); lx = e.clientX; ly = e.clientY; e.preventDefault(); }); lz.addEventListener('pointermove', e => { if (e.pointerId !== lid) return; look(e.clientX - lx, e.clientY - ly, 0.0042); lx = e.clientX; ly = e.clientY; });
+  const endL = e => { if (e.pointerId === lid) lid = null; }; lz.addEventListener('pointerup', endL); lz.addEventListener('pointercancel', endL);
+  const btn = (id, down, up) => { const b = $(id); b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); b.classList.add('down'); if (G.state === 'play' && !G.padOpen) down(); }); const u = () => { b.classList.remove('down'); if (up) up(); }; b.addEventListener('pointerup', u); b.addEventListener('pointercancel', u); b.addEventListener('pointerleave', u); };
+  btn('tAtk', () => { mouseDown = true; attack(); }, () => { mouseDown = false; }); btn('tUse', useThing); btn('tEat', eat); btn('tSwap', () => { let i = P.tool; for (let k = 0; k < 3; k++) { i = (i + 1) % 3; if (toolOK(i)) { setTool(i); break; } } }); btn('tRun', () => { touchRun = true; }, () => { touchRun = false; }); btn('tPause', pauseGame); })();
+// ---------- save / flow ----------
+const SAVEK = 'npSave';
+function saveGame() { try { localStorage.setItem(SAVEK, JSON.stringify({ night: G.night, INV, TOOLS, FIRE: { fuel: FIRE.fuel, lvl: FIRE.lvl }, KIDS: { found: KIDS.found }, kidsDone: KIDSL.map(k => !k.has), maxHp: P.maxHp, armor: P.armor, diff: CFG.diff })); } catch (e) {} }
+function loadSave() { try { return JSON.parse(localStorage.getItem(SAVEK) || 'null'); } catch (e) { return null; } }
+function resetWorldState() { for (const m of MOBS) scene.remove(m.g); MOBS.length = 0; for (const d of drops) scene.remove(d.g); drops.length = 0; for (const t of TREES) { if (t.dead) { t.dead = false; t.hp = 3; setTree(t, true); } } for (const b of BUSHES) { b.has = true; b.ber.forEach(q => q.visible = true); } for (const s of SCRAPS) { s.has = true; s.g.visible = true; } for (const c of CHESTS) { c.has = true; c.lid.position.y = 0.62; c.lid.rotation.x = 0; }
+  KIDSL.forEach(k => { k.has = true; k.g.position.set(k.camp[0] + 1.2, 0, k.camp[1] + 1.2); k.l.intensity = 0.9; }); }
+function startGame(cont) {
+  audioInit(); try { if (TOUCH) { const el = document.documentElement, pr = el.requestFullscreen ? el.requestFullscreen() : null; if (pr && pr.catch) pr.catch(() => {}); if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}
+  resetWorldState(); const sv = cont ? loadSave() : null; G.diff = ['easy', 'normal', 'hard'].indexOf(CFG.diff); if (G.diff < 0) G.diff = 1;
+  Object.assign(P, { x: 0, z: 6, yaw: Math.PI, pitch: 0, hp: 100, hunger: 100, maxHp: 100, armor: 0, tool: 0, cd: 0 }); Object.assign(INV, { log: 4, scrap: 0, berry: 0, raw: 0, cooked: 0, dia: 0, bullets: 0 }); Object.assign(TOOLS, { axe: 1, spear: 0, rifle: 0 }); Object.assign(FIRE, { fuel: 140, lvl: 1 }); KIDS.found = 0; G.night = 1;
+  if (sv) { G.night = sv.night; Object.assign(INV, sv.INV); Object.assign(TOOLS, sv.TOOLS); FIRE.lvl = sv.FIRE.lvl; FIRE.fuel = Math.max(sv.FIRE.fuel, 80); KIDS.found = sv.KIDS.found; P.maxHp = sv.maxHp || 100; P.hp = P.maxHp; P.armor = sv.armor || 0; sv.kidsDone.forEach((d, i) => { if (d) { const k = KIDSL[i]; k.has = false; k.g.position.set(-3 + i * 1.3, 0, 7 + (i % 2)); k.l.intensity = 0; } }); }
+  if (QS.get('night')) G.night = +QS.get('night'); G.t = 0; G.isNight = false; G.alphaSpawned = false; spawnT = 3; howlT = 12;
+  for (const s of ['title', 'howto', 'settings', 'pause', 'over', 'craft']) $(s).classList.remove('on'); $('hud').classList.add('on'); $('touch').classList.add('on'); document.body.classList.add('playing'); $('hurt').style.opacity = 0; $('fade').style.opacity = 0;
+  G.state = 'play'; G.padOpen = false; setTool(0); renderInv(); renderHotbar(); if (!TOUCH) lockPointer(); big(sv ? 'Welcome back. Night ' + G.night : 'Night 1: keep the fire burning!', 3500);
+}
+function die(txt) { if (G.state !== 'play') return; G.state = 'over'; SFX.over(); try { localStorage.removeItem(SAVEK); } catch (e) {} if (document.pointerLockElement) { G.noPause = true; document.exitPointerLock(); setTimeout(() => G.noPause = false, 400); } $('fade').style.opacity = 1;
+  setTimeout(() => { $('hud').classList.remove('on'); $('touch').classList.remove('on'); document.body.classList.remove('playing'); $('overTitle').textContent = 'YOU DIED'; $('overText').innerHTML = txt + '<br>You rescued <b>' + KIDS.found + '</b> of 5 children.'; show('over'); }, 1500); }
+function win() { G.state = 'over'; SFX.chime(); try { localStorage.removeItem(SAVEK); } catch (e) {} if (document.pointerLockElement) document.exitPointerLock(); $('hud').classList.remove('on'); $('touch').classList.remove('on'); document.body.classList.remove('playing'); $('overTitle').textContent = '🏆 99 NIGHTS SURVIVED!'; $('overText').innerHTML = 'The sun rises one last time and the wolves are gone. You made it out of the pines!<br>Children rescued: <b>' + KIDS.found + '/5</b>'; show('over'); }
+const SCREENS = ['title', 'howto', 'settings', 'pause', 'over']; function show(id) { for (const s of SCREENS) $(s).classList.toggle('on', s === id); if (id === 'title') $('btnContinue').style.display = loadSave() ? '' : 'none'; }
+function pauseGame() { if (G.state !== 'play') return; G.state = 'pause'; show('pause'); if (ac) ac.suspend(); if (document.pointerLockElement) document.exitPointerLock(); }
+function resumeGame() { if (G.state !== 'pause') return; G.state = 'play'; for (const s of SCREENS) $(s).classList.remove('on'); if (ac) ac.resume(); lockPointer(); last = performance.now(); }
+function toTitle() { if (G.state === 'pause' || G.state === 'play') saveGame(); G.state = 'title'; $('hud').classList.remove('on'); $('touch').classList.remove('on'); document.body.classList.remove('playing'); show('title'); syncSettings(); if (ac) ac.resume(); }
+let msgT = 0; function big(t, ms = 2400) { const m = $('msg'); m.textContent = t; m.classList.add('on'); clearTimeout(msgT); msgT = setTimeout(() => m.classList.remove('on'), ms); }
+let settingsFrom = 'title';
+function syncSettings() { $('rngSens').value = CFG.sens; $('rngVol').value = CFG.vol; $('rngBright').value = CFG.bright; for (const [id, v] of [['segQ', CFG.quality], ['segDiff', CFG.diff]]) [...$(id).children].forEach(b => b.classList.toggle('on', b.dataset.v === v)); }
+function wireUI() {
+  $('btnPlay').onclick = () => startGame(false); $('btnContinue').onclick = () => startGame(true); $('btnHow').onclick = () => show('howto'); $('howClose').onclick = () => show(G.state === 'pause' ? 'pause' : 'title'); $('btnSet').onclick = () => { settingsFrom = 'title'; syncSettings(); show('settings'); }; $('btnPauseSet').onclick = () => { settingsFrom = 'pause'; syncSettings(); show('settings'); }; $('setClose').onclick = () => { saveCfg(); show(settingsFrom); };
+  $('btnResume').onclick = resumeGame; $('btnQuit').onclick = toTitle; $('btnAgain').onclick = () => startGame(false); $('btnOverMenu').onclick = toTitle; $('craftClose').onclick = closeCraft;
+  $('rngSens').oninput = e => { CFG.sens = +e.target.value; saveCfg(); }; $('rngVol').oninput = e => { CFG.vol = +e.target.value; if (master) master.gain.value = CFG.vol; saveCfg(); }; $('rngBright').oninput = e => { CFG.bright = +e.target.value; renderer.toneMappingExposure = CFG.bright; saveCfg(); };
+  const seg = (id, fn) => [...$(id).children].forEach(b => b.onclick = () => { fn(b.dataset.v); syncSettings(); saveCfg(); }); seg('segQ', v => { CFG.quality = v; renderer.setPixelRatio(Math.min(devicePixelRatio || 1, TOUCH || v === 'low' ? 1.25 : 2)); resize(); }); seg('segDiff', v => { CFG.diff = v; });
+  for (const b of document.querySelectorAll('.btn,.seg button')) b.addEventListener('pointerdown', () => { audioInit(); SFX.tick(); }); document.body.classList.toggle('touchmode', TOUCH);
+}
+// ---------- the loop ----------
+let last = performance.now(), hbT = 0, ambT = 4, stepAcc = 0, popT = 0;
+function updatePlayer(dt) {
+  let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x, iz = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0) + joy.y; const il = Math.hypot(ix, iz); if (il > 1) { ix /= il; iz /= il; }
+  P.sprint = (keys.ShiftLeft || keys.ShiftRight || touchRun) && il > 0.1; const spd = (P.sprint ? 6.6 : 4.3) * Math.min(il, 1), sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
+  const mx = (cy * ix + sy * iz) * spd, mz = (-sy * ix + cy * iz) * spd, n = Math.max(1, Math.ceil(Math.hypot(mx, mz) * dt / 0.15)); for (let i = 0; i < n; i++) { P.x += mx * dt / n; P.z += mz * dt / n; pushOut(P, P.r); } P.x = clamp(P.x, -MAP, MAP); P.z = clamp(P.z, -MAP, MAP);
+  if (Math.hypot(mx, mz) > 0.5) { P.walk += dt * (P.sprint ? 12 : 8); stepAcc += Math.hypot(mx, mz) * dt; if (stepAcc > (P.sprint ? 2.6 : 1.9)) { stepAcc = 0; SFX.step(P.sprint ? 1.2 : 0.8); } }
+  P.cd -= dt; P.swing = Math.max(0, P.swing - dt * 5); P.hurtT += dt; if ((mouseDown) && P.tool !== 2) attack();
+  // hunger and health
+  P.hunger = Math.max(0, P.hunger - dt * [0.18, 0.26, 0.36][G.diff]); if (P.hunger <= 0) { P.hp -= dt * 1.5; if (P.hp <= 0) die('You starved on night ' + G.night + '.'); } else if (P.hurtT > 8 && P.hunger > 40) P.hp = Math.min(P.maxHp, P.hp + dt * 0.8);
+  const inSafe = fireOn() && Math.hypot(P.x, P.z) < safeR(); if (inSafe && P.hp < P.maxHp) P.hp = Math.min(P.maxHp, P.hp + dt * 1.5);
+  // camera and hand
+  const bob = Math.sin(P.walk) * 0.015; cam.position.set(P.x, 1.65 + bob, P.z); cam.rotation.set(P.pitch, P.yaw, 0); const sw = Math.sin(P.swing * 3.14);
+  hand.position.set(0.28, -0.28 + Math.abs(Math.sin(P.walk)) * 0.012 - sw * 0.05, -0.5); hand.rotation.set(-sw * 1.1, 0, 0);
+  TARGET = findTarget(); const pr = $('prompt'); if (TARGET) { pr.innerHTML = (TOUCH ? '' : '<kbd>E</kbd>') + promptFor(TARGET); pr.classList.add('on'); } else pr.classList.remove('on');
+}
+function updateCamp(dt) {
+  if (FIRE.fuel > 0) FIRE.fuel = Math.max(0, FIRE.fuel - dt / (1 + 0.4 * (FIRE.lvl - 1))); const on = FIRE.fuel > 0, t = performance.now() / 1000;
+  fireLight.intensity = on ? (1.6 + FIRE.lvl * 0.35) * (0.85 + 0.15 * Math.sin(t * 17) * Math.sin(t * 5.3)) * (FIRE.fuel < 20 ? FIRE.fuel / 20 : 1) : 0; fireLight.distance = 22 + FIRE.lvl * 7; fireLight.position.set(0, 1.4, 0);
+  flames.forEach((f, i) => { f.visible = on; f.scale.set(1 + FIRE.lvl * 0.12, (0.8 + 0.3 * Math.sin(t * 9 + i * 2)) * (1 + FIRE.lvl * 0.1), 1 + FIRE.lvl * 0.12); f.rotation.y += dt * 2; }); embers.forEach(e => { e.visible = on; const u = e.userData; u.ph += dt * 1.5; const k = u.ph % 3; e.position.set(u.x + Math.sin(u.ph * 2) * 0.2, 0.8 + k * 0.7, u.z + Math.cos(u.ph * 2) * 0.2); e.scale.setScalar(Math.max(0.1, 1 - k / 3)); });
+  if (on && Math.hypot(P.x, P.z) < 14) { popT -= dt; if (popT <= 0) { popT = rr(0.1, 0.5); SFX.pop(1 - Math.hypot(P.x, P.z) / 14); } }
+  for (const d of drops) { d.age += dt; d.g.position.set(d.x, 0.4 + Math.sin(d.age * 3) * 0.08, d.z); d.g.rotation.y += dt * 2; }
+}
+function updateHud(dt) {
+  $('hpBar').style.width = Math.max(0, P.hp / P.maxHp * 100) + '%'; $('hgBar').style.width = P.hunger + '%'; $('fuBar').style.width = (FIRE.fuel / FIRE.max * 100) + '%'; $('barTxt').textContent = '❤ ' + Math.ceil(P.hp) + '   🍗 ' + Math.ceil(P.hunger) + '   🔥 ' + Math.ceil(FIRE.fuel) + 's  (lvl ' + FIRE.lvl + ')';
+  const tt = G.t % CYCLE; $('night').innerHTML = (G.isNight ? '🌙 NIGHT ' : '☀ DAY ') + G.night + ' / 99<small>' + (G.isNight ? 'Survive until dawn' : 'Gather before dark') + '</small><div id="clock"><i style="width:' + (tt / CYCLE * 100) + '%"></i></div>';
+  { const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), tx = -P.x, tz = -P.z; $('arrow').style.transform = 'rotate(' + Math.atan2(fx * tz - fz * tx, fx * tx + fz * tz) + 'rad)'; } $('cdist').textContent = 'Camp ' + Math.round(Math.hypot(P.x, P.z)) + 'm';
+}
+function frame(now) {
+  requestAnimationFrame(frame); const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (G.state === 'play') {
+    if (!G.padOpen) { updatePlayer(dt); } G.time = (G.time || 0) + dt; updateTime(dt); updateMobs(dt); updateCamp(dt); updateHud(dt);
+    let near = 99; for (const m of MOBS) if (!m.dead && m.T.hostile) near = Math.min(near, Math.hypot(m.x - P.x, m.z - P.z)); if (P.hp < 30 || near < 5) { hbT -= dt; if (hbT <= 0) { hbT = P.hp < 30 ? 0.6 : 0.9; SFX.heart(P.hp < 30 ? 0.5 : 0.3); } }
+    ambT -= dt; if (ambT <= 0) { ambT = rr(3, 7); if (G.isNight) { Math.random() < 0.7 ? SFX.cricket() : SFX.owl(); } else if (Math.random() < 0.3) SFX.cricket(); }
+    for (const t of TREES) if (t.shake > 0) t.shake -= dt;
+  } else if (G.state === 'title' || G.state === 'over') { const t = now / 1000; cam.position.set(Math.sin(t * 0.08) * 5, 2.4, 14); cam.rotation.set(-0.06, Math.sin(t * 0.06) * 0.25 + 0, 0); updateCamp(dt); const k = 0.9; scene.background.set(0x0a1018); scene.fog.color.set(0x0a1018); scene.fog.near = 6; scene.fog.far = 45; ambient.intensity = 0.5; lantern.intensity = 0; window.stars.material.opacity = 1; }
+  renderer.render(scene, cam);
+}
+// ---------- go ----------
+renderer.toneMappingExposure = CFG.bright; wireUI(); syncSettings();
+try { buildWorld(); buildHand(); } catch (err) { console.error(err); fatal('Something went wrong building the forest: ' + err.message); }
+$('loading').style.display = 'none'; show('title'); requestAnimationFrame(frame); if (QS.get('auto')) startGame(false);
+</script>
+<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(function(){});</script>
+</body>
+</html>
