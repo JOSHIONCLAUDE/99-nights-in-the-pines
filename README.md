@@ -1,5 +1,5 @@
 # 99 Nights in the Pines
-A 3D first-person forest survival game. Keep the campfire alive, chop wood, hunt and cook, rescue five lost children, craft gear and survive 99 nights against wolves, alpha wolves and cultists.
+A 3D first-person forest survival game. Keep the campfire alive, chop wood, hunt and cook, rescue five lost children, craft gear and survive 99 nights against wolves, alpha wolves and bears.
 
 Play / install: https://joshionclaude.github.io/99-nights-in-the-pines/
 - Android: `99Nights-Android.apk` from Releases. Windows: unzip `99Nights-Windows.zip`, run `99 Nights.exe`.
