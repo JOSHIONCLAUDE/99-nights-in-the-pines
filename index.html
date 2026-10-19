@@ -60,6 +60,7 @@
   <div id="night"></div>
   <div id="bars"><div class="bar"><div><i id="hpBar" style="background:linear-gradient(#e24a3a,#a02418)"></i></div></div><div class="bar"><div><i id="hgBar" style="background:linear-gradient(#e8a23a,#a86a18)"></i></div></div><div class="bar"><div><i id="fuBar" style="background:linear-gradient(#ffd24a,#ff6a1a)"></i></div></div><span id="barTxt"></span></div>
   <div id="inv"></div>
+  <div id="mpinfo" style="position:absolute;left:50%;top:76px;transform:translateX(-50%);font-size:13px;text-shadow:0 1px 4px #000;opacity:.85"></div>
   <div id="compass"><i id="arrow"></i><span id="cdist"></span></div>
   <div id="msg"></div><div id="prompt"></div>
   <div id="hotbar"></div>
@@ -78,6 +79,7 @@
   <div class="row"><span>Difficulty</span><div class="seg" id="segDiff"><button data-v="easy">Easy</button><button data-v="normal">Normal</button><button data-v="hard">Hard</button></div></div>
   <button class="btn" id="btnContinue" style="display:none">Continue</button>
   <button class="btn" id="btnPlay">New game</button>
+  <button class="btn" id="btnMP">👥 Play with friends</button>
   <button class="btn small" id="btnHow">How to play</button><button class="btn small" id="btnSet">Settings</button><a class="btn small" href="download.html" style="text-decoration:none;display:inline-block">⬇ Get the app</a>
   <div class="sub" style="font-size:12px;margin-top:14px;opacity:.55">Cartoon-style survival with loud sounds. An original game, not connected to any other game.</div>
 </div>
@@ -86,6 +88,7 @@
   <h3>The campfire</h3>It is your safe place. Wolves will not come close while it burns. <b>Press E at the fire to add logs.</b> If it goes out at night, you are in big trouble. Upgrade it at the crafting bench to burn longer and protect a bigger area. Follow the orange arrow to find camp.
   <h3>Gather</h3>Click trees with your <b>axe</b> for logs. Press E on berry bushes, scrap piles and chests. Hunt deer and bunnies for meat, then cook it at the fire. Press <b>F</b> to eat.
   <h3>Craft</h3>At the bench next to the fire make a better axe, a spear, bullets, a rifle, medkits and campfire upgrades.
+  <h3>Play with friends</h3>Tap <b>Play with friends</b>, host a game and share the 4-letter room code. Up to 4 players survive together online: shared world, shared campfire, shared night. If you go down you wake up at dawn. If everyone goes down, it is game over.
   <h3>Rescue the kids</h3>Five lost children are hiding in camps around the forest. Find them and press E to bring them back to camp. Each one gives you a reward.
   <h3>Danger</h3>Wolves, huge alpha wolves and angry bears come out at night. Fight with your axe, spear or rifle, stay near the fire and keep your hunger up.
   <div style="text-align:center;margin-top:14px"><button class="btn small" id="howClose">Back</button></div></div></div>
@@ -95,11 +98,20 @@
   <div class="row"><span>Brightness</span><input type="range" id="rngBright" min="0.7" max="2" step="0.05"></div>
   <div class="row"><span>Graphics</span><div class="seg" id="segQ"><button data-v="high">High</button><button data-v="low">Fast</button></div></div>
   <button class="btn small" id="setClose">Back</button></div></div>
+<div class="screen" id="mp"><div class="card" style="width:min(520px,94vw);text-align:center"><h2 style="margin:0 0 6px;color:#ffe2b0">👥 Play with friends (up to 4)</h2>
+  <div style="opacity:.85;font-size:14px">Everyone survives together. One player hosts and shares the 4-letter room code.</div>
+  <div class="row" style="margin:12px auto 4px"><span>Your name</span><input id="mpName" maxlength="12" style="font:inherit;padding:6px 10px;border-radius:6px;border:1px solid #6a3a10;background:#1a1008;color:#fff;width:170px"></div>
+  <button class="btn" id="mpHost">Host a game</button>
+  <div class="row" style="margin:6px auto"><span>Room code</span><input id="mpCode" maxlength="4" style="font:inherit;font-size:22px;letter-spacing:6px;text-transform:uppercase;text-align:center;padding:6px;border-radius:6px;border:1px solid #6a3a10;background:#1a1008;color:#fff;width:130px"></div>
+  <button class="btn" id="mpJoin">Join</button>
+  <div id="mpStatus" style="min-height:24px;margin:8px 0;color:#ffd27a"></div>
+  <button class="btn small" id="mpBack">Back</button></div></div>
 <div class="screen" id="pause"><h1 class="logo" style="font-size:clamp(30px,6vw,56px)">PAUSED</h1><button class="btn" id="btnResume">Resume</button><button class="btn small" id="btnPauseSet">Settings</button><button class="btn small" id="btnQuit">Save and quit</button></div>
 <div class="screen" id="craft"><div class="card" style="width:min(560px,94vw)"><h2 style="margin:0 0 4px;color:#ffe2b0">🔨 Crafting bench</h2><div id="craftHave" style="opacity:.8;font-size:13px"></div><div id="recipes"></div><div style="text-align:center;margin-top:10px"><button class="btn small" id="craftClose">Close</button></div></div></div>
 <div class="screen" id="over"><h1 class="endTitle" id="overTitle"></h1><div class="sub" id="overText"></div><button class="btn" id="btnAgain">Try again</button><button class="btn small" id="btnOverMenu">Menu</button></div>
 
 <script src="vendor/three.min.js"></script>
+<script src="vendor/peerjs.min.js"></script>
 <script>
 'use strict';
 const $ = id => document.getElementById(id), clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t, rr = (a, b) => a + Math.random() * (b - a), pick = a => a[(Math.random() * a.length) | 0];
@@ -239,25 +251,29 @@ function buildQuad(kind) {
   g.scale.setScalar(cfg.s); scene.add(g); return { g, legs };
 }
 const MT = { wolf: { hp: 40, speed: 5.0, dmg: 8, range: 1.5, pts: 0, hostile: true, meat: 1 }, alpha: { hp: 380, speed: 5.4, dmg: 22, range: 2.2, hostile: true, meat: 4 }, bear: { hp: 220, speed: 4.4, dmg: 18, range: 2.0, hostile: true, meat: 5 }, deer: { hp: 45, speed: 6.5, dmg: 0, range: 0, hostile: false, meat: 3 }, bunny: { hp: 12, speed: 5.5, dmg: 0, range: 0, hostile: false, meat: 1 } };
+let MOBID = 0, DROPID = 0;
 function spawnMob(kind, x, z) {
   const T = MT[kind], m = buildQuad(kind), scale = 1 + (G.night - 1) * 0.015, d = [0.75, 1, 1.35][G.diff];
-  const mob = { kind, T, m, g: m.g, x, z, hp: T.hp * (T.hostile ? scale : 1) * (T.hostile ? d : 1), yaw: Math.random() * 6, atk: 0, phase: Math.random() * 6, wander: rr(0, 4), tx: x, tz: z, dead: 0, growl: rr(2, 7), stuck: 0, lx: x, lz: z, st: 0 };
+  const mob = { id: ++MOBID, kind, T, m, g: m.g, x, z, hp: T.hp * (T.hostile ? scale : 1) * (T.hostile ? d : 1), yaw: Math.random() * 6, atk: 0, phase: Math.random() * 6, wander: rr(0, 4), tx: x, tz: z, dead: 0, growl: rr(2, 7), stuck: 0, lx: x, lz: z, st: 0 };
   MOBS.push(mob); return mob;
 }
-function killMob(m) { m.dead = 0.001; SFX.die(m.x, m.z); const n = m.T.meat; if (n) { drops.push({ x: m.x, z: m.z, kind: 'raw', n, age: 0, g: dropMesh(0xc04040) }); } if (m.kind === 'alpha') { drops.push({ x: m.x + 0.6, z: m.z, kind: 'dia', n: 2, age: 0, g: dropMesh(0x40e0ff) }); drops.push({ x: m.x, z: m.z + 0.6, kind: 'scrap', n: 3, age: 0, g: dropMesh(0x9aa0a8) }); } else if (m.kind === 'bear') drops.push({ x: m.x, z: m.z, kind: 'scrap', n: 2, age: 0, g: dropMesh(0x9aa0a8) }); }
+function killMob(m, visual) { m.dead = 0.001; SFX.die(m.x, m.z); if (visual) return; const n = m.T.meat; if (n) addDrop('raw', m.x, m.z, n); if (m.kind === 'alpha') { addDrop('dia', m.x + 0.6, m.z, 2); addDrop('scrap', m.x, m.z + 0.6, 3); } else if (m.kind === 'bear') addDrop('scrap', m.x, m.z, 2); }
+const DCOL = { raw: 0xc04040, dia: 0x40e0ff, scrap: 0x9aa0a8 };
+function addDrop(kind, x, z, n, id) { const d = { id: id || ++DROPID, x, z, kind, n, age: 0, g: dropMesh(DCOL[kind]) }; drops.push(d); if (!id && NET.on && NET.host) NET.bcast({ t: 'w', e: { t: 'd+', id: d.id, kind, x, z, n } }); return d; }
 const drops = []; function dropMesh(c) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), MAT(c, { emissive: c, emissiveIntensity: 0.5 })); scene.add(m); return m; }
 const angD = (a, b) => { let d = b - a; while (d > Math.PI) d -= 6.2832; while (d < -Math.PI) d += 6.2832; return d; };
 function fireOn() { return FIRE.fuel > 0; } const safeR = () => 4.5 + FIRE.lvl * 2;
 function updateMobs(dt) {
+  if (NET.on && !NET.host) { mirrorMobs(dt); return; }
   for (let i = MOBS.length - 1; i >= 0; i--) {
     const m = MOBS[i], T = m.T;
     if (m.dead) { m.dead += dt; const k = Math.min(1, m.dead / 0.5); m.g.rotation.z = 1.5 * k; m.g.position.y = -0.1 * k; if (m.dead > 2) { scene.remove(m.g); MOBS.splice(i, 1); } continue; }
-    const dx = P.x - m.x, dz = P.z - m.z, d = Math.hypot(dx, dz); let sp = 0, tx = m.x, tz = m.z, flee = false;
+    const tg = targetFor(m), dx = tg.x - m.x, dz = tg.z - m.z, d = Math.hypot(dx, dz); let sp = 0, tx = m.x, tz = m.z, flee = false;
     if (T.hostile) {
       const aggro = G.isNight ? 60 : 22;
       const fdx = m.x - FIRE.x, fdz = m.z - FIRE.z, fd = Math.hypot(fdx, fdz);
       if (fireOn() && fd < safeR() + 0.5) { tx = m.x + fdx / fd * 5; tz = m.z + fdz / fd * 5; sp = T.speed * 0.9; flee = true; }
-      else if (d < aggro) { tx = P.x; tz = P.z; sp = d > T.range * 0.8 ? T.speed : 0; if (fireOn() && Math.hypot(P.x, P.z) < safeR() && fd < safeR() + 3) { const a = Math.atan2(m.z - FIRE.z, m.x - FIRE.x) + 0.3; tx = FIRE.x + Math.cos(a) * (safeR() + 1.5); tz = FIRE.z + Math.sin(a) * (safeR() + 1.5); sp = T.speed * 0.6; } }
+      else if (d < aggro) { tx = tg.x; tz = tg.z; sp = d > T.range * 0.8 ? T.speed : 0; if (fireOn() && Math.hypot(tg.x, tg.z) < safeR() && fd < safeR() + 3) { const a = Math.atan2(m.z - FIRE.z, m.x - FIRE.x) + 0.3; tx = FIRE.x + Math.cos(a) * (safeR() + 1.5); tz = FIRE.z + Math.sin(a) * (safeR() + 1.5); sp = T.speed * 0.6; } }
       else { m.wander -= dt; if (m.wander <= 0) { m.wander = rr(3, 7); m.tx = clamp(m.x + rr(-15, 15), -MAP, MAP); m.tz = clamp(m.z + rr(-15, 15), -MAP, MAP); } tx = m.tx; tz = m.tz; sp = T.speed * 0.35; }
     } else {
       if (d < 11) { tx = m.x - dx; tz = m.z - dz; sp = T.speed; flee = true; } else { m.wander -= dt; if (m.wander <= 0) { m.wander = rr(3, 8); m.tx = clamp(m.x + rr(-8, 8), -MAP, MAP); m.tz = clamp(m.z + rr(-8, 8), -MAP, MAP); } tx = m.tx; tz = m.tz; sp = Math.hypot(tx - m.x, tz - m.z) > 0.5 ? T.speed * 0.25 : 0; }
@@ -269,34 +285,37 @@ function updateMobs(dt) {
     if (sp > 0.1) m.yaw += angD(m.yaw, Math.atan2(mx, mz)) * Math.min(1, dt * 9);
     m.g.position.set(m.x, 0, m.z); m.g.rotation.y = m.yaw; m.phase += dt * sp * 2.2; const s = Math.sin(m.phase);
     if (m.m.legs.length) m.m.legs.forEach((l, k) => l.rotation.x = s * 0.7 * (k % 2 ? -1 : 1) * (k > 1 ? -1 : 1)); if (m.m.torch) m.m.torch.scale.setScalar(0.8 + Math.random() * 0.4); m.g.position.y = Math.abs(s) * 0.03;
-    if (T.hostile) { m.growl -= dt; if (m.growl <= 0 && d < 40) { m.growl = rr(3, 8); SFX.growl(m.x, m.z, m.kind === 'alpha'); } m.atk -= dt; if (!flee && d < T.range + 0.4 && m.atk <= 0 && G.state === 'play') { m.atk = 0.9; hurtPlayer(T.dmg * [0.7, 1, 1.4][G.diff] * (1 - P.armor), m); } }
+    if (T.hostile) { m.growl -= dt; if (m.growl <= 0 && Math.hypot(P.x - m.x, P.z - m.z) < 40) { m.growl = rr(3, 8); SFX.growl(m.x, m.z, m.kind === 'alpha'); } m.atk -= dt; if (!flee && d < T.range + 0.4 && m.atk <= 0 && G.state === 'play') { m.atk = 0.9; hurtTarget(tg, T.dmg * [0.7, 1, 1.4][G.diff], m); } }
   }
 }
-function hurtPlayer(dmg, m) { P.hp -= dmg; P.hurtT = 0; SFX.hurt(); if (m) SFX.claw(m.x, m.z); const h = $('hurt'); h.style.opacity = 1; setTimeout(() => h.style.opacity = 0, 180); if (P.hp <= 0) die('You were taken by the forest on night ' + G.night + '.'); }
+function targetFor(m) { let best = P.down ? null : { x: P.x, z: P.z, self: true }, bd = P.down ? 1e9 : Math.hypot(P.x - m.x, P.z - m.z); if (NET.on && NET.host) for (const id in NET.peers) { const q = NET.peers[id]; if (q.down || q.x === undefined) continue; const d = Math.hypot(q.x - m.x, q.z - m.z); if (d < bd) { bd = d; best = { x: q.x, z: q.z, peer: q }; } } return best || { x: P.x, z: P.z, self: true, none: true }; }
+function hurtTarget(tg, dmg, m) { if (tg.none) return; if (tg.self) hurtPlayer(dmg * (1 - P.armor), m); else if (tg.peer && tg.peer.conn) { try { tg.peer.conn.send({ t: 'hurt', d: dmg, mid: m.id }); } catch (e) {} } }
+function hurtPlayer(dmg, m) { if (P.down) return; P.hp -= dmg; P.hurtT = 0; SFX.hurt(); if (m) SFX.claw(m.x, m.z); const h = $('hurt'); h.style.opacity = 1; setTimeout(() => h.style.opacity = 0, 180); if (P.hp <= 0) die('You were taken by the forest on night ' + G.night + '.'); }
 // ---------- spawning, day/night ----------
 let spawnT = 3, dayAnimT = 0; const SKY = { day: new THREE.Color(0x8ab4d8), dusk: new THREE.Color(0xe08a50), night: new THREE.Color(0x05080f) };
 function phase() { const t = G.t % CYCLE; return t; }
 function updateTime(dt) {
   G.t += dt; const t = G.t % CYCLE, was = G.isNight; const night = t >= DAYLEN; G.isNight = night;
   if (night && !was) { SFX.horn(); big('NIGHT ' + G.night + ' BEGINS', 3000); }
-  if (!night && was) { dawn(); }
+  if (!night && was && !(NET.on && !NET.host)) { dawn(); }
   let k; // 0 = bright day, 1 = deep night
   if (t < DAYLEN - 15) k = 0; else if (t < DAYLEN) k = (t - (DAYLEN - 15)) / 15 * 0.8; else if (t < DAYLEN + 8) k = 0.8 + (t - DAYLEN) / 8 * 0.2; else if (t < CYCLE - 10) k = 1; else k = 1 - (t - (CYCLE - 10)) / 10;
   const col = k < 0.5 ? SKY.day.clone().lerp(SKY.dusk, k * 2) : SKY.dusk.clone().lerp(SKY.night, (k - 0.5) * 2); scene.background.copy(col); scene.fog.color.copy(col); scene.fog.near = lerp(25, 6, k); scene.fog.far = lerp(95, 42, k);
   ambient.intensity = lerp(0.9, 0.38, k); ambient.color.set(k > 0.5 ? 0x7088c0 : 0xffffff); sun.intensity = lerp(0.9, 0.35, k); sun.color.set(k > 0.5 ? 0x9db4e8 : 0xfff0d0); window.stars.material.opacity = clamp((k - 0.6) * 2.5, 0, 1); lantern.intensity = lerp(0, 1.1, clamp((k - 0.2) * 1.5, 0, 1));
   // spawns
-  spawnT -= dt; if (spawnT <= 0) { spawnT = night ? 3.2 : 8; const wolves = MOBS.filter(m => !m.dead && m.kind === 'wolf').length; const cap = night ? Math.min(TOUCH ? 10 : 16, 2 + Math.floor(G.night * 0.55)) : 2; const rcap = [0.7, 1, 1.3][G.diff]; if (wolves < cap * rcap) { const a = Math.random() * 6.28, dd = rr(34, 50); spawnMob('wolf', clamp(P.x + Math.cos(a) * dd, -MAP, MAP), clamp(P.z + Math.sin(a) * dd, -MAP, MAP)); }
-    if (night) { if (G.night % 5 === 0 && !G.alphaSpawned) { G.alphaSpawned = true; const a = Math.random() * 6.28; spawnMob('alpha', clamp(P.x + Math.cos(a) * 45, -MAP, MAP), clamp(P.z + Math.sin(a) * 45, -MAP, MAP)); big('An ALPHA wolf is hunting you!', 3000); SFX.howl(P.x, P.z); }
-      const cc = G.night >= 8 ? Math.min(5, Math.floor((G.night - 2) / 6)) : 0; if (MOBS.filter(m => !m.dead && m.kind === 'bear').length < cc) { const a = Math.random() * 6.28; spawnMob('bear', clamp(P.x + Math.cos(a) * 42, -MAP, MAP), clamp(P.z + Math.sin(a) * 42, -MAP, MAP)); } }
-    const animals = MOBS.filter(m => !m.dead && !m.T.hostile).length; if (!night && animals < 10) { const a = Math.random() * 6.28, dd = rr(25, 55), x = clamp(P.x + Math.cos(a) * dd, -MAP, MAP), z = clamp(P.z + Math.sin(a) * dd, -MAP, MAP); spawnMob(Math.random() < 0.5 ? 'deer' : 'bunny', x, z); } }
+  spawnT -= dt; if (!(NET.on && !NET.host) && spawnT <= 0) { spawnT = night ? 3.2 : 8; const SC = spawnCenter(); const wolves = MOBS.filter(m => !m.dead && m.kind === 'wolf').length; const cap = night ? Math.min(TOUCH ? 10 : 16, 2 + Math.floor(G.night * 0.55)) : 2; const rcap = [0.7, 1, 1.3][G.diff]; if (wolves < cap * rcap) { const a = Math.random() * 6.28, dd = rr(34, 50); spawnMob('wolf', clamp(SC.x + Math.cos(a) * dd, -MAP, MAP), clamp(SC.z + Math.sin(a) * dd, -MAP, MAP)); }
+    if (night) { if (G.night % 5 === 0 && !G.alphaSpawned) { G.alphaSpawned = true; const a = Math.random() * 6.28; spawnMob('alpha', clamp(SC.x + Math.cos(a) * 45, -MAP, MAP), clamp(SC.z + Math.sin(a) * 45, -MAP, MAP)); big('An ALPHA wolf is hunting you!', 3000); SFX.howl(P.x, P.z); }
+      const cc = G.night >= 8 ? Math.min(5, Math.floor((G.night - 2) / 6)) : 0; if (MOBS.filter(m => !m.dead && m.kind === 'bear').length < cc) { const a = Math.random() * 6.28; spawnMob('bear', clamp(SC.x + Math.cos(a) * 42, -MAP, MAP), clamp(SC.z + Math.sin(a) * 42, -MAP, MAP)); } }
+    const animals = MOBS.filter(m => !m.dead && !m.T.hostile).length; if (!night && animals < 10) { const a = Math.random() * 6.28, dd = rr(25, 55), x = clamp(SC.x + Math.cos(a) * dd, -MAP, MAP), z = clamp(SC.z + Math.sin(a) * dd, -MAP, MAP); spawnMob(Math.random() < 0.5 ? 'deer' : 'bunny', x, z); } }
   if (night) { howlT -= dt; if (howlT <= 0) { howlT = rr(14, 30); SFX.howl(P.x + rr(-60, 60), P.z + rr(-60, 60)); } }
 }
 let howlT = 8;
+function spawnCenter() { const c = []; if (!P.down) c.push({ x: P.x, z: P.z }); if (NET.on) for (const id in NET.peers) { const q = NET.peers[id]; if (!q.down && q.x !== undefined) c.push(q); } return c.length ? pick(c) : { x: 0, z: 0 }; }
 function dawn() {
   SFX.dawn(); for (let i = MOBS.length - 1; i >= 0; i--) { const m = MOBS[i]; if (m.T.hostile) { scene.remove(m.g); MOBS.splice(i, 1); } }
-  if (G.night >= 99) { win(); return; } G.night++; G.alphaSpawned = false; for (const b of BUSHES) { b.has = true; b.ber.forEach(q => q.visible = true); } for (const s of SCRAPS) { if (!s.has && Math.random() < 0.6) { s.has = true; s.g.visible = true; } }
-  for (const t of TREES) if (t.dead && Math.random() < 0.5) { t.dead = false; t.hp = 3; setTree(t, true); }
-  P.hp = Math.min(P.maxHp, P.hp + 30); big('You survived! Night ' + (G.night - 1) + ' of 99 done', 3500); saveGame();
+  if (G.night >= 99) { if (NET.on) NET.bcast({ t: 'win' }); win(); return; } G.night++; G.alphaSpawned = false; for (const b of BUSHES) { b.has = true; b.ber.forEach(q => q.visible = true); } const sr = [], tr = []; SCRAPS.forEach((s, i) => { if (!s.has && Math.random() < 0.6) { s.has = true; s.g.visible = true; sr.push(i); } });
+  for (const t of TREES) if (t.dead && Math.random() < 0.5) { t.dead = false; t.hp = 3; setTree(t, true); tr.push(t.idx); }
+  P.hp = Math.min(P.maxHp, P.hp + 30); if (P.down) revive(); big('You survived! Night ' + (G.night - 1) + ' of 99 done', 3500); if (NET.on) NET.bcast({ t: 'dawn', n: G.night, tr, sr }); else saveGame();
 }
 function setTree(t, on) { const s = t.s; if (on) { _o.position.set(t.x, 1.5 * s, t.z); _o.scale.set(s, s, s); _o.rotation.set(0, 0, 0); _o.updateMatrix(); treeMesh.setMatrixAt(t.idx, _o.matrix); _o.position.set(t.x, 3.2 * s + 1.0, t.z); _o.updateMatrix(); coneA.setMatrixAt(t.idx, _o.matrix); _o.position.set(t.x, 5.6 * s + 1.0, t.z); _o.updateMatrix(); coneB.setMatrixAt(t.idx, _o.matrix); } else { treeMesh.setMatrixAt(t.idx, _zero); coneA.setMatrixAt(t.idx, _zero); coneB.setMatrixAt(t.idx, _zero); } treeMesh.instanceMatrix.needsUpdate = coneA.instanceMatrix.needsUpdate = coneB.instanceMatrix.needsUpdate = true; }
 // ---------- hand items ----------
@@ -314,16 +333,16 @@ const TOOLN = ['Axe', 'Spear', 'Rifle']; const TOOLE = ['🪓', '🔱', '🔫'];
 function renderHotbar() { const h = $('hotbar'); h.innerHTML = ''; TOOLN.forEach((n, i) => { const d = document.createElement('div'); d.className = 'slot' + (i === P.tool ? ' on' : '') + (toolOK(i) ? '' : ''); d.style.opacity = toolOK(i) ? 1 : 0.3; d.innerHTML = '<b>' + (i + 1) + '</b>' + TOOLE[i] + '<small>' + (i === 0 && TOOLS.axe > 1 ? 'Iron ' : '') + n + (i === 2 ? ' ' + INV.bullets : '') + '</small>'; d.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (G.state === 'play') setTool(i); }); h.appendChild(d); }); }
 // ---------- attack / chop ----------
 function attack() {
-  if (G.state !== 'play' || P.cd > 0) return; const tool = P.tool;
+  if (G.state !== 'play' || P.cd > 0 || P.down || G.mpPause) return; const tool = P.tool;
   if (tool === 2) { if (INV.bullets <= 0) { SFX.deny(); big('No bullets', 800); P.cd = 0.4; return; } INV.bullets--; P.cd = 0.7; SFX.shoot(); P.swing = 1; hitscan(); renderInv(); renderHotbar(); return; }
   P.cd = tool === 1 ? 0.55 : 0.5; P.swing = 1; SFX.swing();
   const reach = tool === 1 ? 3.6 : 2.7, dmg = tool === 1 ? 24 : TOOLS.axe > 1 ? 24 : 15; const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
   let best = null, bd = 99; for (const m of MOBS) { if (m.dead) continue; const dx = m.x - P.x, dz = m.z - P.z, d = Math.hypot(dx, dz) - (m.kind === 'alpha' ? 0.9 : 0.3); if (d > reach || (dx * fx + dz * fz) / Math.max(0.01, Math.hypot(dx, dz)) < 0.55) continue; if (d < bd) { bd = d; best = m; } }
-  if (best) { best.hp -= dmg; SFX.hit(best.x, best.z); best.x += fx * 0.4; best.z += fz * 0.4; if (best.hp <= 0) killMob(best); flashDot(); return; }
-  if (tool === 0) { let bt = null; bd = 99; for (const o of nearObs(P.x + fx * 1.5, P.z + fz * 1.5)) { if (o.type !== 'tree') continue; const dx = o.x - P.x, dz = o.z - P.z, d = Math.hypot(dx, dz) - o.r; if (d > 2.4 || (dx * fx + dz * fz) / Math.max(0.01, Math.hypot(dx, dz)) < 0.7) continue; if (d < bd) { bd = d; bt = o; } } if (bt) { bt.hp -= TOOLS.axe > 1 ? 1.6 : 1; SFX.chop(); bt.shake = 0.2; if (bt.hp <= 0) { bt.dead = true; setTree(bt, false); SFX.fell(); INV.log += 3; SFX.pickup(); renderInv(); big('+3 logs', 900); } flashDot(); } }
+  if (best) { SFX.hit(best.x, best.z); flashDot(); if (NET.on && !NET.host) { NET.send({ t: 'hit', id: best.id, dmg }); return; } best.hp -= dmg; best.x += fx * 0.4; best.z += fz * 0.4; if (best.hp <= 0) killMob(best); return; }
+  if (tool === 0) { let bt = null; bd = 99; for (const o of nearObs(P.x + fx * 1.5, P.z + fz * 1.5)) { if (o.type !== 'tree') continue; const dx = o.x - P.x, dz = o.z - P.z, d = Math.hypot(dx, dz) - o.r; if (d > 2.4 || (dx * fx + dz * fz) / Math.max(0.01, Math.hypot(dx, dz)) < 0.7) continue; if (d < bd) { bd = d; bt = o; } } if (bt) { bt.hp -= TOOLS.axe > 1 ? 1.6 : 1; SFX.chop(); bt.shake = 0.2; if (bt.hp <= 0) { bt.dead = true; setTree(bt, false); SFX.fell(); INV.log += 3; SFX.pickup(); renderInv(); big('+3 logs', 900); NET.world({ t: 'tree', i: bt.idx }); } flashDot(); } }
 }
 function flashDot() { const d = $('dot'); d.classList.add('hot'); setTimeout(() => d.classList.remove('hot'), 100); }
-function hitscan() { const cp = Math.cos(P.pitch), dx = -Math.sin(P.yaw) * cp, dy = Math.sin(P.pitch), dz = -Math.cos(P.yaw) * cp; let best = null, bt = 70; for (const m of MOBS) { if (m.dead) continue; const s = m.kind === 'alpha' ? 1.9 : 1; const cx = m.x - P.x, cy = 0.8 * s - 1.65, cz = m.z - P.z, t = cx * dx + cy * dy + cz * dz; if (t < 0.5 || t > bt) continue; const px = P.x + dx * t - m.x, py = 1.65 + dy * t - 0.8 * s, pz = P.z + dz * t - m.z; if (px * px + pz * pz < (0.6 * s) ** 2 && Math.abs(py) < 0.8 * s) { best = m; bt = t; } } if (best) { best.hp -= 70; SFX.hit(best.x, best.z); if (best.hp <= 0) killMob(best); flashDot(); } }
+function hitscan() { const cp = Math.cos(P.pitch), dx = -Math.sin(P.yaw) * cp, dy = Math.sin(P.pitch), dz = -Math.cos(P.yaw) * cp; let best = null, bt = 70; for (const m of MOBS) { if (m.dead) continue; const s = m.kind === 'alpha' ? 1.9 : 1; const cx = m.x - P.x, cy = 0.8 * s - 1.65, cz = m.z - P.z, t = cx * dx + cy * dy + cz * dz; if (t < 0.5 || t > bt) continue; const px = P.x + dx * t - m.x, py = 1.65 + dy * t - 0.8 * s, pz = P.z + dz * t - m.z; if (px * px + pz * pz < (0.6 * s) ** 2 && Math.abs(py) < 0.8 * s) { best = m; bt = t; } } if (best) { SFX.hit(best.x, best.z); flashDot(); if (NET.on && !NET.host) { NET.send({ t: 'hit', id: best.id, dmg: 70 }); return; } best.hp -= 70; if (best.hp <= 0) killMob(best); } }
 // ---------- interactions ----------
 let TARGET = null;
 function findTarget() { const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let best = null, bs = 1e9;
@@ -331,21 +350,21 @@ function findTarget() { const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let 
   for (const dr of drops) { const d = Math.hypot(dr.x - P.x, dr.z - P.z); if (d < 1.6) { return { type: 'drop', ref: dr, x: dr.x, z: dr.z }; } } return best; }
 function promptFor(t) { switch (t.type) { case 'fire': return FIRE.fuel > 0 && INV.raw > 0 ? 'Add log · cook meat' : 'Add a log (' + INV.log + ')'; case 'bench': return 'Crafting bench'; case 'bush': return 'Pick berries'; case 'scrap': return 'Search scrap'; case 'chest': return 'Open chest'; case 'kid': return 'Rescue the child!'; case 'drop': return 'Pick up'; } return ''; }
 const GIVE = { raw: 'raw meat', scrap: 'scrap', dia: 'diamonds' };
-function useThing() { if (G.state !== 'play') return; const t = TARGET; if (!t) return;
+function useThing() { if (G.state !== 'play' || P.down || G.mpPause) return; const t = TARGET; if (!t) return;
   switch (t.type) {
-    case 'fire': { let did = false; if (INV.raw > 0 && FIRE.fuel > 0) { INV.cooked += INV.raw; INV.raw = 0; SFX.craft(); big('Meat cooked!', 900); did = true; } if (INV.log > 0 && FIRE.fuel < FIRE.max) { INV.log--; FIRE.fuel = Math.min(FIRE.max, FIRE.fuel + 45); SFX.fuel(); did = true; } if (!did) { SFX.deny(); big(INV.log <= 0 ? 'You need logs! Chop trees.' : 'The fire is full', 1000); } renderInv(); break; }
+    case 'fire': { let did = false; if (INV.raw > 0 && FIRE.fuel > 0) { INV.cooked += INV.raw; INV.raw = 0; SFX.craft(); big('Meat cooked!', 900); did = true; } if (INV.log > 0 && FIRE.fuel < FIRE.max) { INV.log--; FIRE.fuel = Math.min(FIRE.max, FIRE.fuel + 45); SFX.fuel(); did = true; NET.world({ t: 'fuel' }); } if (!did) { SFX.deny(); big(INV.log <= 0 ? 'You need logs! Chop trees.' : 'The fire is full', 1000); } renderInv(); break; }
     case 'bench': openCraft(); break;
-    case 'bush': t.has = false; t.ber.forEach(q => q.visible = false); INV.berry += 3 + (Math.random() * 3 | 0); SFX.pickup(); big('+berries', 800); renderInv(); break;
-    case 'scrap': t.has = false; t.g.visible = false; const n = 2 + (Math.random() * 3 | 0); INV.scrap += n; SFX.pickup(); big('+' + n + ' scrap', 800); renderInv(); break;
-    case 'chest': { t.has = false; t.lid.position.y = 0.9; t.lid.rotation.x = -0.8; const d = Math.random() < 0.5 ? 1 + (Math.random() * 2 | 0) : 0, s = 2 + (Math.random() * 4 | 0); INV.scrap += s; INV.dia += d; if (Math.random() < 0.5) INV.bullets += 4; SFX.chime(); big('Chest: ' + s + ' scrap' + (d ? ', ' + d + ' diamonds' : ''), 1800); renderInv(); break; }
-    case 'kid': { t.has = false; KIDS.found++; SFX.chime(); const k = t; k.g.position.set(-3 + k.i * 1.3, 0, 7 + (k.i % 2)); k.l.intensity = 0; INV.dia += 2; INV.scrap += 4; P.maxHp += 10; P.hp = Math.min(P.maxHp, P.hp + 20); big('Child rescued! (' + KIDS.found + '/' + KIDS.total + ')  +2 💎 +10 max HP', 3000); renderInv(); saveGame(); break; }
-    case 'drop': { const d = t.ref; if (d.kind === 'raw') INV.raw += d.n; else if (d.kind === 'dia') INV.dia += d.n; else INV.scrap += d.n; scene.remove(d.g); drops.splice(drops.indexOf(d), 1); SFX.pickup(); renderInv(); break; }
+    case 'bush': NET.world({ t: 'bush', i: BUSHES.indexOf(t) }); t.has = false; t.ber.forEach(q => q.visible = false); INV.berry += 3 + (Math.random() * 3 | 0); SFX.pickup(); big('+berries', 800); renderInv(); break;
+    case 'scrap': NET.world({ t: 'scrap', i: SCRAPS.indexOf(t) }); t.has = false; t.g.visible = false; const n = 2 + (Math.random() * 3 | 0); INV.scrap += n; SFX.pickup(); big('+' + n + ' scrap', 800); renderInv(); break;
+    case 'chest': { NET.world({ t: 'chest', i: CHESTS.indexOf(t) }); t.has = false; t.lid.position.y = 0.9; t.lid.rotation.x = -0.8; const d = Math.random() < 0.5 ? 1 + (Math.random() * 2 | 0) : 0, s = 2 + (Math.random() * 4 | 0); INV.scrap += s; INV.dia += d; if (Math.random() < 0.5) INV.bullets += 4; SFX.chime(); big('Chest: ' + s + ' scrap' + (d ? ', ' + d + ' diamonds' : ''), 1800); renderInv(); break; }
+    case 'kid': { NET.world({ t: 'kid', i: t.i }); t.has = false; KIDS.found++; SFX.chime(); const k = t; k.g.position.set(-3 + k.i * 1.3, 0, 7 + (k.i % 2)); k.l.intensity = 0; INV.dia += 2; INV.scrap += 4; P.maxHp += 10; P.hp = Math.min(P.maxHp, P.hp + 20); big('Child rescued! (' + KIDS.found + '/' + KIDS.total + ')  +2 💎 +10 max HP', 3000); renderInv(); saveGame(); break; }
+    case 'drop': { const d = t.ref; if (d.kind === 'raw') INV.raw += d.n; else if (d.kind === 'dia') INV.dia += d.n; else INV.scrap += d.n; scene.remove(d.g); drops.splice(drops.indexOf(d), 1); SFX.pickup(); renderInv(); NET.world({ t: 'd-', id: d.id }); break; }
   } }
-function eat() { if (G.state !== 'play') return; if (INV.cooked > 0) { INV.cooked--; P.hunger = Math.min(100, P.hunger + 45); P.hp = Math.min(P.maxHp, P.hp + 10); } else if (INV.berry > 0) { INV.berry--; P.hunger = Math.min(100, P.hunger + 12); } else if (INV.raw > 0) { INV.raw--; P.hunger = Math.min(100, P.hunger + 18); P.hp -= 4; } else { SFX.deny(); big('You have nothing to eat', 1000); return; } SFX.eat(); renderInv(); }
+function eat() { if (G.state !== 'play' || P.down) return; if (INV.cooked > 0) { INV.cooked--; P.hunger = Math.min(100, P.hunger + 45); P.hp = Math.min(P.maxHp, P.hp + 10); } else if (INV.berry > 0) { INV.berry--; P.hunger = Math.min(100, P.hunger + 12); } else if (INV.raw > 0) { INV.raw--; P.hunger = Math.min(100, P.hunger + 18); P.hp -= 4; } else { SFX.deny(); big('You have nothing to eat', 1000); return; } SFX.eat(); renderInv(); }
 function renderInv() { $('inv').innerHTML = '🪵 ' + INV.log + ' &nbsp; 🔩 ' + INV.scrap + ' &nbsp; 💎 ' + INV.dia + '<br>🍓 ' + INV.berry + ' &nbsp; 🥩 ' + INV.raw + ' &nbsp; 🍖 ' + INV.cooked + ' &nbsp; 🔫 ' + INV.bullets + '<br>🧒 ' + KIDS.found + '/' + KIDS.total; }
 // crafting
 const RECIPES = () => [
-  { n: '🔥 Upgrade campfire (level ' + FIRE.lvl + ' → ' + (FIRE.lvl + 1) + ')', d: 'Burns longer, safe zone grows, brighter', cost: { log: [8, 15, 25][FIRE.lvl - 1] || 99, scrap: [3, 8, 15][FIRE.lvl - 1] || 99, dia: FIRE.lvl >= 3 ? 2 : 0 }, ok: FIRE.lvl < 4, f: () => { FIRE.lvl++; FIRE.fuel = Math.min(FIRE.max, FIRE.fuel + 60); } },
+  { n: '🔥 Upgrade campfire (level ' + FIRE.lvl + ' → ' + (FIRE.lvl + 1) + ')', d: 'Burns longer, safe zone grows, brighter', cost: { log: [8, 15, 25][FIRE.lvl - 1] || 99, scrap: [3, 8, 15][FIRE.lvl - 1] || 99, dia: FIRE.lvl >= 3 ? 2 : 0 }, ok: FIRE.lvl < 4, f: () => { FIRE.lvl++; FIRE.fuel = Math.min(FIRE.max, FIRE.fuel + 60); NET.world({ t: 'fireup' }); } },
   { n: '🪓 Iron axe', d: 'Chop faster, hit harder', cost: { scrap: 6 }, ok: TOOLS.axe < 2, f: () => { TOOLS.axe = 2; } },
   { n: '🔱 Spear', d: 'Long reach weapon', cost: { log: 3, scrap: 2 }, ok: !TOOLS.spear, f: () => { TOOLS.spear = 1; setTool(1); } },
   { n: '🔫 Rifle', d: 'Needs bullets', cost: { scrap: 15, dia: 3 }, ok: !TOOLS.rifle, f: () => { TOOLS.rifle = 1; INV.bullets += 6; setTool(2); } },
@@ -379,7 +398,7 @@ addEventListener('contextmenu', e => e.preventDefault());
   btn('tAtk', () => { mouseDown = true; attack(); }, () => { mouseDown = false; }); btn('tUse', useThing); btn('tEat', eat); btn('tSwap', () => { let i = P.tool; for (let k = 0; k < 3; k++) { i = (i + 1) % 3; if (toolOK(i)) { setTool(i); break; } } }); btn('tRun', () => { touchRun = true; }, () => { touchRun = false; }); btn('tPause', pauseGame); })();
 // ---------- save / flow ----------
 const SAVEK = 'npSave';
-function saveGame() { try { localStorage.setItem(SAVEK, JSON.stringify({ night: G.night, INV, TOOLS, FIRE: { fuel: FIRE.fuel, lvl: FIRE.lvl }, KIDS: { found: KIDS.found }, kidsDone: KIDSL.map(k => !k.has), maxHp: P.maxHp, armor: P.armor, diff: CFG.diff })); } catch (e) {} }
+function saveGame() { if (NET.on) return; try { localStorage.setItem(SAVEK, JSON.stringify({ night: G.night, INV, TOOLS, FIRE: { fuel: FIRE.fuel, lvl: FIRE.lvl }, KIDS: { found: KIDS.found }, kidsDone: KIDSL.map(k => !k.has), maxHp: P.maxHp, armor: P.armor, diff: CFG.diff })); } catch (e) {} }
 function loadSave() { try { return JSON.parse(localStorage.getItem(SAVEK) || 'null'); } catch (e) { return null; } }
 function resetWorldState() { for (const m of MOBS) scene.remove(m.g); MOBS.length = 0; for (const d of drops) scene.remove(d.g); drops.length = 0; for (const t of TREES) { if (t.dead) { t.dead = false; t.hp = 3; setTree(t, true); } } for (const b of BUSHES) { b.has = true; b.ber.forEach(q => q.visible = true); } for (const s of SCRAPS) { s.has = true; s.g.visible = true; } for (const c of CHESTS) { c.has = true; c.lid.position.y = 0.62; c.lid.rotation.x = 0; }
   KIDSL.forEach(k => { k.has = true; k.g.position.set(k.camp[0] + 1.2, 0, k.camp[1] + 1.2); k.l.intensity = 0.9; }); }
@@ -392,13 +411,14 @@ function startGame(cont) {
   for (const s of ['title', 'howto', 'settings', 'pause', 'over', 'craft']) $(s).classList.remove('on'); $('hud').classList.add('on'); $('touch').classList.add('on'); document.body.classList.add('playing'); $('hurt').style.opacity = 0; $('fade').style.opacity = 0;
   G.state = 'play'; G.padOpen = false; setTool(0); renderInv(); renderHotbar(); if (!TOUCH) lockPointer(); big(sv ? 'Welcome back. Night ' + G.night : 'Night 1: keep the fire burning!', 3500);
 }
-function die(txt) { if (G.state !== 'play') return; G.state = 'over'; SFX.over(); try { localStorage.removeItem(SAVEK); } catch (e) {} if (document.pointerLockElement) { G.noPause = true; document.exitPointerLock(); setTimeout(() => G.noPause = false, 400); } $('fade').style.opacity = 1;
+function die(txt) { if (G.state !== 'play' || P.down) return; if (NET.on) { goDown(txt); return; } overScreen(txt); }
+function overScreen(txt) { if (G.state === 'over') return; G.state = 'over'; SFX.over(); if (!NET.on) { try { localStorage.removeItem(SAVEK); } catch (e) {} } if (document.pointerLockElement) { G.noPause = true; document.exitPointerLock(); setTimeout(() => G.noPause = false, 400); } $('fade').style.opacity = 1;
   setTimeout(() => { $('hud').classList.remove('on'); $('touch').classList.remove('on'); document.body.classList.remove('playing'); $('overTitle').textContent = 'YOU DIED'; $('overText').innerHTML = txt + '<br>You rescued <b>' + KIDS.found + '</b> of 5 children.'; show('over'); }, 1500); }
-function win() { G.state = 'over'; SFX.chime(); try { localStorage.removeItem(SAVEK); } catch (e) {} if (document.pointerLockElement) document.exitPointerLock(); $('hud').classList.remove('on'); $('touch').classList.remove('on'); document.body.classList.remove('playing'); $('overTitle').textContent = '🏆 99 NIGHTS SURVIVED!'; $('overText').innerHTML = 'The sun rises one last time and the wolves are gone. You made it out of the pines!<br>Children rescued: <b>' + KIDS.found + '/5</b>'; show('over'); }
-const SCREENS = ['title', 'howto', 'settings', 'pause', 'over']; function show(id) { for (const s of SCREENS) $(s).classList.toggle('on', s === id); if (id === 'title') $('btnContinue').style.display = loadSave() ? '' : 'none'; }
-function pauseGame() { if (G.state !== 'play') return; G.state = 'pause'; show('pause'); if (ac) ac.suspend(); if (document.pointerLockElement) document.exitPointerLock(); }
-function resumeGame() { if (G.state !== 'pause') return; G.state = 'play'; for (const s of SCREENS) $(s).classList.remove('on'); if (ac) ac.resume(); lockPointer(); last = performance.now(); }
-function toTitle() { if (G.state === 'pause' || G.state === 'play') saveGame(); G.state = 'title'; $('hud').classList.remove('on'); $('touch').classList.remove('on'); document.body.classList.remove('playing'); show('title'); syncSettings(); if (ac) ac.resume(); }
+function win() { if (G.state === 'over') return; G.state = 'over'; SFX.chime(); try { localStorage.removeItem(SAVEK); } catch (e) {} if (document.pointerLockElement) document.exitPointerLock(); $('hud').classList.remove('on'); $('touch').classList.remove('on'); document.body.classList.remove('playing'); $('overTitle').textContent = '🏆 99 NIGHTS SURVIVED!'; $('overText').innerHTML = 'The sun rises one last time and the wolves are gone. You made it out of the pines!<br>Children rescued: <b>' + KIDS.found + '/5</b>'; show('over'); }
+const SCREENS = ['title', 'howto', 'settings', 'pause', 'over', 'mp']; function show(id) { for (const s of SCREENS) $(s).classList.toggle('on', s === id); if (id === 'title') $('btnContinue').style.display = loadSave() ? '' : 'none'; }
+function pauseGame() { if (G.state !== 'play') return; if (NET.on) { G.mpPause = true; show('pause'); if (document.pointerLockElement) document.exitPointerLock(); return; } G.state = 'pause'; show('pause'); if (ac) ac.suspend(); if (document.pointerLockElement) document.exitPointerLock(); }
+function resumeGame() { if (G.mpPause) { G.mpPause = false; for (const s of SCREENS) $(s).classList.remove('on'); lockPointer(); return; } if (G.state !== 'pause') return; G.state = 'play'; for (const s of SCREENS) $(s).classList.remove('on'); if (ac) ac.resume(); lockPointer(); last = performance.now(); }
+function toTitle() { if (G.state === 'pause' || G.state === 'play') saveGame(); NET.leave(); G.mpPause = false; G.state = 'title'; $('hud').classList.remove('on'); $('touch').classList.remove('on'); document.body.classList.remove('playing'); show('title'); syncSettings(); if (ac) ac.resume(); }
 let msgT = 0; function big(t, ms = 2400) { const m = $('msg'); m.textContent = t; m.classList.add('on'); clearTimeout(msgT); msgT = setTimeout(() => m.classList.remove('on'), ms); }
 let settingsFrom = 'title';
 function syncSettings() { $('rngSens').value = CFG.sens; $('rngVol').value = CFG.vol; $('rngBright').value = CFG.bright; for (const [id, v] of [['segQ', CFG.quality], ['segDiff', CFG.diff]]) [...$(id).children].forEach(b => b.classList.toggle('on', b.dataset.v === v)); }
@@ -412,6 +432,7 @@ function wireUI() {
 // ---------- the loop ----------
 let last = performance.now(), hbT = 0, ambT = 4, stepAcc = 0, popT = 0;
 function updatePlayer(dt) {
+  if (P.down || G.mpPause) { cam.position.set(P.x, P.down ? 0.4 : 1.65, P.z); cam.rotation.set(P.pitch, P.yaw, P.down ? 0.5 : 0); $('prompt').classList.remove('on'); return; }
   let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x, iz = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0) + joy.y; const il = Math.hypot(ix, iz); if (il > 1) { ix /= il; iz /= il; }
   P.sprint = (keys.ShiftLeft || keys.ShiftRight || touchRun) && il > 0.1; const spd = (P.sprint ? 6.6 : 4.3) * Math.min(il, 1), sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
   const mx = (cy * ix + sy * iz) * spd, mz = (-sy * ix + cy * iz) * spd, n = Math.max(1, Math.ceil(Math.hypot(mx, mz) * dt / 0.15)); for (let i = 0; i < n; i++) { P.x += mx * dt / n; P.z += mz * dt / n; pushOut(P, P.r); } P.x = clamp(P.x, -MAP, MAP); P.z = clamp(P.z, -MAP, MAP);
@@ -440,15 +461,137 @@ function updateHud(dt) {
 function frame(now) {
   requestAnimationFrame(frame); const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (G.state === 'play') {
-    if (!G.padOpen) { updatePlayer(dt); } G.time = (G.time || 0) + dt; updateTime(dt); updateMobs(dt); updateCamp(dt); updateHud(dt);
+    if (!G.padOpen) { updatePlayer(dt); } G.time = (G.time || 0) + dt; updateTime(dt); updateMobs(dt); updateCamp(dt); updateHud(dt); NET.tick(dt);
     let near = 99; for (const m of MOBS) if (!m.dead && m.T.hostile) near = Math.min(near, Math.hypot(m.x - P.x, m.z - P.z)); if (P.hp < 30 || near < 5) { hbT -= dt; if (hbT <= 0) { hbT = P.hp < 30 ? 0.6 : 0.9; SFX.heart(P.hp < 30 ? 0.5 : 0.3); } }
     ambT -= dt; if (ambT <= 0) { ambT = rr(3, 7); if (G.isNight) { Math.random() < 0.7 ? SFX.cricket() : SFX.owl(); } else if (Math.random() < 0.3) SFX.cricket(); }
     for (const t of TREES) if (t.shake > 0) t.shake -= dt;
   } else if (G.state === 'title' || G.state === 'over') { const t = now / 1000; cam.position.set(Math.sin(t * 0.08) * 5, 2.4, 14); cam.rotation.set(-0.06, Math.sin(t * 0.06) * 0.25 + 0, 0); updateCamp(dt); const k = 0.9; scene.background.set(0x0a1018); scene.fog.color.set(0x0a1018); scene.fog.near = 6; scene.fog.far = 45; ambient.intensity = 0.5; lantern.intensity = 0; window.stars.material.opacity = 1; }
   renderer.render(scene, cam);
 }
+// ---------- online co-op (host runs the world, friends join with a room code) ----------
+const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }, PFX = 'np99-';
+const NET = {
+  on: false, host: false, code: '', peer: null, hostConn: null, peers: {}, myId: '', name: 'Player', n: 0, sendT: 0, snapT: 0, infoT: 0, status: () => {},
+  bcast(m, except) { const str = m; for (const id in this.peers) { const q = this.peers[id]; if (q.conn && q.conn !== except && q.conn.open) { try { q.conn.send(str); } catch (e) {} } } },
+  send(m) { if (this.hostConn && this.hostConn.open) { try { this.hostConn.send(m); } catch (e) {} } },
+  world(e) { if (!this.on) return; if (this.host) this.bcast({ t: 'w', e }); else this.send({ t: 'w', e }); },
+  leave() {
+    try { if (this.hostConn) this.hostConn.close(); } catch (e) {} try { for (const id in this.peers) { const q = this.peers[id]; if (q.conn) q.conn.close(); if (q.g) scene.remove(q.g); } } catch (e) {} try { if (this.peer) this.peer.destroy(); } catch (e) {}
+    this.on = false; this.host = false; this.peer = null; this.hostConn = null; this.peers = {}; this.code = ''; $('mpinfo').textContent = '';
+  },
+  hostGame(name) {
+    this.leave(); this.name = name; if (typeof Peer === 'undefined') { this.status('Online play needs an internet connection.'); return; } this.status('Creating room…');
+    const tryCode = (left) => { const code = Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[(Math.random() * 24) | 0]).join(''); let p; try { p = new Peer(PFX + code, { debug: 0, config: ICE }); } catch (e) { this.status('Could not start online play.'); return; }
+      p.on('open', () => { this.peer = p; this.on = true; this.host = true; this.code = code; this.myId = 'h'; startGame(false); this.status(''); });
+      p.on('connection', c => this.onConn(c));
+      p.on('error', err => { if (err.type === 'unavailable-id' && left > 0) { try { p.destroy(); } catch (e) {} tryCode(left - 1); } else if (!this.on) this.status('Could not create a room (' + err.type + '). Check your internet.'); });
+    };
+    tryCode(4);
+  },
+  join(code, name) {
+    this.leave(); this.name = name; code = code.toUpperCase().trim(); if (code.length !== 4) { this.status('Type the 4-letter room code.'); return; } if (typeof Peer === 'undefined') { this.status('Online play needs an internet connection.'); return; } this.status('Connecting…');
+    let p; try { p = new Peer(undefined, { debug: 0, config: ICE }); } catch (e) { this.status('Could not start online play.'); return; } this.peer = p; let joined = false;
+    const timeout = setTimeout(() => { if (!joined) { this.status('Could not reach that room. Check the code.'); this.leave(); } }, 15000);
+    p.on('open', () => { const c = p.connect(PFX + code, { serialization: 'json', reliable: true }); this.hostConn = c; c.on('open', () => { c.send({ t: 'hello', name }); }); c.on('data', d => this.clientMsg(d, () => { joined = true; clearTimeout(timeout); })); c.on('close', () => { clearTimeout(timeout); if (this.on) { this.leave(); big('The host left the game', 3000); toTitle(); } else if (!joined) this.status('Connection closed.'); }); });
+    p.on('error', err => { clearTimeout(timeout); if (!joined) { this.status(err.type === 'peer-unavailable' ? 'Room not found. Check the code.' : 'Connection problem (' + err.type + ').'); } });
+    this.code = code;
+  },
+  onConn(conn) {
+    conn.on('open', () => { if (Object.keys(this.peers).length >= 3) { try { conn.send({ t: 'full' }); } catch (e) {} setTimeout(() => conn.close(), 300); } });
+    conn.on('data', d => this.hostMsg(conn, d)); conn.on('close', () => { for (const id in this.peers) if (this.peers[id].conn === conn) { const q = this.peers[id]; if (q.g) scene.remove(q.g); delete this.peers[id]; big((q.name || 'A player') + ' left', 2000); } });
+  },
+  hostMsg(conn, d) {
+    if (d.t === 'hello') { const id = 'c' + (++this.n); this.peers[id] = { id, name: String(d.name || 'Player').slice(0, 12), conn, x: 0, z: 6, yaw: 0, hp: 100, down: false, tool: 0 }; conn.send(buildInit(id)); big(this.peers[id].name + ' joined!', 2200); SFX.chime(); return; }
+    const q = Object.values(this.peers).find(p => p.conn === conn); if (!q) return;
+    if (d.t === 'p') { q.x = d.x; q.z = d.z; q.yaw = d.yaw; q.tool = d.tool; q.hp = d.hp; q.down = !!d.down; }
+    else if (d.t === 'hit') { const m = MOBS.find(x => x.id === d.id); if (m && !m.dead) { m.hp -= d.dmg; SFX.hit(m.x, m.z); if (m.hp <= 0) killMob(m); } }
+    else if (d.t === 'w') { applyWorld(d.e); this.bcast({ t: 'w', e: d.e }, conn); }
+  },
+  clientMsg(d, joinedCb) {
+    switch (d.t) {
+      case 'full': this.status('That room is full (4 players).'); this.leave(); break;
+      case 'init': joinedCb(); this.on = true; this.host = false; this.myId = d.id; startGame(false); applyInit(d); break;
+      case 's': applySnap(d); break;
+      case 'w': applyWorld(d.e); break;
+      case 'hurt': { const m = MOBS.find(x => x.id === d.mid); hurtPlayer(d.d * (1 - P.armor), m); break; }
+      case 'dawn': applyDawn(d); break;
+      case 'win': win(); break;
+      case 'over': overScreen(d.txt || 'Everyone was taken by the forest.'); break;
+    }
+  },
+  tick(dt) {
+    if (!this.on) return;
+    this.sendT -= dt; this.snapT -= dt; this.infoT -= dt;
+    const mine = { t: 'p', x: P.x, z: P.z, yaw: P.yaw, tool: P.tool, hp: P.hp, down: P.down ? 1 : 0 };
+    if (!this.host && this.sendT <= 0) { this.sendT = 0.07; this.send(mine); }
+    if (this.host && this.snapT <= 0) {
+      this.snapT = 0.09; const pl = [['h', this.name, P.x, P.z, P.yaw, P.tool, P.hp, P.down ? 1 : 0]]; for (const id in this.peers) { const q = this.peers[id]; pl.push([id, q.name, q.x, q.z, q.yaw, q.tool, q.hp, q.down ? 1 : 0]); }
+      this.bcast({ t: 's', T: G.t, n: G.night, f: [FIRE.fuel, FIRE.lvl], m: MOBS.map(m => [m.id, m.kind, +m.x.toFixed(2), +m.z.toFixed(2), +m.yaw.toFixed(2), Math.round(m.hp), m.dead ? 1 : 0]), p: pl });
+      if (P.down && Object.keys(this.peers).length && Object.values(this.peers).every(q => q.down)) { const txt = 'Everyone was taken by the forest on night ' + G.night + '.'; this.bcast({ t: 'over', txt }); overScreen(txt); }
+    }
+    for (const id in this.peers) { const q = this.peers[id]; if (q.x === undefined) continue; ensureAvatar(q); q.rx = q.rx === undefined ? q.x : lerp(q.rx, q.x, Math.min(1, dt * 12)); q.rz = q.rz === undefined ? q.z : lerp(q.rz, q.z, Math.min(1, dt * 12)); q.ry = (q.ry || 0) + angD(q.ry || 0, q.yaw) * Math.min(1, dt * 12); q.g.position.set(q.rx, 0, q.rz); q.g.rotation.y = q.ry + Math.PI; q.g.rotation.x = q.down ? -1.4 : 0; q.g.position.y = q.down ? 0.2 : 0; }
+    if (this.infoT <= 0) { this.infoT = 1; $('mpinfo').textContent = '👥 Room ' + this.code + ' · ' + (Object.keys(this.peers).length + (this.host ? 1 : 0)) + ' players' + (P.down ? ' · you are down until dawn' : ''); }
+  },
+};
+function nameSprite(txt) { const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d'); g.font = 'bold 34px Segoe UI, Arial'; g.textAlign = 'center'; g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, 8, 256, 48); g.fillStyle = '#ffe2b0'; g.fillText(txt, 128, 45); const t = new THREE.CanvasTexture(c); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false })); sp.scale.set(1.6, 0.4, 1); sp.renderOrder = 10; return sp; }
+const PCOLS = [0xd04a4a, 0x4a7ad0, 0xd0c040, 0x50b070, 0xb060c0];
+function ensureAvatar(q) { if (q.g) { if (q.nameShown !== q.name) { q.g.remove(q.sp); q.sp = nameSprite(q.name); q.sp.position.y = 2.1; q.g.add(q.sp); q.nameShown = q.name; } return; } const k = buildKid(PCOLS[(q.id.length * 3 + (q.name || '').length) % 5]); q.g = k.g; q.g.scale.setScalar(1.6); q.sp = nameSprite(q.name || 'Player'); q.sp.position.y = 1.5; q.g.add(q.sp); q.nameShown = q.name; scene.add(q.g); }
+function buildInit(id) { return { t: 'init', id, n: G.night, T: G.t, diff: G.diff, fuel: FIRE.fuel, lvl: FIRE.lvl, found: KIDS.found, tr: TREES.filter(t => t.dead).map(t => t.idx), bu: BUSHES.map((b, i) => b.has ? -1 : i).filter(i => i >= 0), sc: SCRAPS.map((b, i) => b.has ? -1 : i).filter(i => i >= 0), ch: CHESTS.map((b, i) => b.has ? -1 : i).filter(i => i >= 0), kd: KIDSL.filter(k => !k.has).map(k => k.i), dr: drops.map(d => ({ id: d.id, kind: d.kind, x: d.x, z: d.z, n: d.n })) }; }
+function applyInit(d) {
+  G.night = d.n; G.t = d.T; G.diff = d.diff; FIRE.fuel = d.fuel; FIRE.lvl = d.lvl; KIDS.found = d.found;
+  d.tr.forEach(i => applyWorld({ t: 'tree', i })); d.bu.forEach(i => applyWorld({ t: 'bush', i })); d.sc.forEach(i => applyWorld({ t: 'scrap', i })); d.ch.forEach(i => applyWorld({ t: 'chest', i })); d.kd.forEach(i => applyWorld({ t: 'kid', i, silent: 1 })); d.dr.forEach(x => addDrop(x.kind, x.x, x.z, x.n, x.id)); KIDS.found = d.found; renderInv(); big('Joined! Help keep the fire alive', 3000);
+}
+function applyWorld(e) {
+  switch (e.t) {
+    case 'tree': { const t = TREES[e.i]; if (t && !t.dead) { t.dead = true; setTree(t, false); } break; }
+    case 'bush': { const b = BUSHES[e.i]; if (b) { b.has = false; b.ber.forEach(q => q.visible = false); } break; }
+    case 'scrap': { const b = SCRAPS[e.i]; if (b) { b.has = false; b.g.visible = false; } break; }
+    case 'chest': { const c = CHESTS[e.i]; if (c && c.has) { c.has = false; c.lid.position.y = 0.9; c.lid.rotation.x = -0.8; } break; }
+    case 'kid': { const k = KIDSL[e.i]; if (k && k.has) { k.has = false; if (!e.silent) KIDS.found++; k.g.position.set(-3 + k.i * 1.3, 0, 7 + (k.i % 2)); k.l.intensity = 0; renderInv(); if (!e.silent) { SFX.chime(); big('A child was rescued! (' + KIDS.found + '/' + KIDS.total + ')', 2500); } } break; }
+    case 'd+': addDrop(e.kind, e.x, e.z, e.n, e.id); break;
+    case 'd-': { const i = drops.findIndex(d => d.id === e.id); if (i >= 0) { scene.remove(drops[i].g); drops.splice(i, 1); } break; }
+    case 'fuel': if (NET.host) FIRE.fuel = Math.min(FIRE.max, FIRE.fuel + 45); break;
+    case 'fireup': if (NET.host) { FIRE.lvl++; FIRE.fuel = Math.min(FIRE.max, FIRE.fuel + 60); } break;
+  }
+}
+function applyDawn(d) { SFX.dawn(); G.night = d.n; G.alphaSpawned = false; for (const b of BUSHES) { b.has = true; b.ber.forEach(q => q.visible = true); } d.sr.forEach(i => { const s = SCRAPS[i]; if (s) { s.has = true; s.g.visible = true; } }); d.tr.forEach(i => { const t = TREES[i]; if (t && t.dead) { t.dead = false; t.hp = 3; setTree(t, true); } }); P.hp = Math.min(P.maxHp, P.hp + 30); if (P.down) revive(); big('You survived! Night ' + (d.n - 1) + ' of 99 done', 3500); }
+function applySnap(d) {
+  if (Math.abs(G.t - d.T) > 1.2) G.t = d.T; else G.t += (d.T - G.t) * 0.2; G.night = d.n; FIRE.fuel = d.f[0]; FIRE.lvl = d.f[1];
+  const seen = new Set();
+  for (const e of d.m) { let m = MOBS.find(x => x.id === e[0]); if (!m) { m = spawnMob(e[1], e[2], e[3]); m.id = e[0]; m.remote = true; m.sx = e[2]; m.sz = e[3]; m.syaw = e[4]; } m.sx = e[2]; m.sz = e[3]; m.syaw = e[4]; m.hp = e[5]; if (e[6] && !m.dead) killMob(m, true); seen.add(m); }
+  for (let i = MOBS.length - 1; i >= 0; i--) if (!seen.has(MOBS[i])) { scene.remove(MOBS[i].g); MOBS.splice(i, 1); }
+  const ids = new Set(); for (const e of d.p) { if (e[0] === NET.myId) continue; ids.add(e[0]); let q = NET.peers[e[0]]; if (!q) q = NET.peers[e[0]] = { id: e[0] }; q.name = e[1]; q.x = e[2]; q.z = e[3]; q.yaw = e[4]; q.tool = e[5]; q.hp = e[6]; q.down = !!e[7]; }
+  for (const id in NET.peers) if (!ids.has(id)) { if (NET.peers[id].g) scene.remove(NET.peers[id].g); delete NET.peers[id]; }
+}
+function mirrorMobs(dt) {
+  for (let i = MOBS.length - 1; i >= 0; i--) {
+    const m = MOBS[i];
+    if (m.dead) { m.dead += dt; const k = Math.min(1, m.dead / 0.5); m.g.rotation.z = 1.5 * k; m.g.position.y = -0.1 * k; if (m.dead > 2.2) { scene.remove(m.g); MOBS.splice(i, 1); } continue; }
+    const ox = m.x, oz = m.z; m.x = lerp(m.x, m.sx, Math.min(1, dt * 10)); m.z = lerp(m.z, m.sz, Math.min(1, dt * 10)); m.yaw += angD(m.yaw, m.syaw) * Math.min(1, dt * 10);
+    const sp = Math.hypot(m.x - ox, m.z - oz) / Math.max(dt, 0.001); m.g.position.set(m.x, 0, m.z); m.g.rotation.y = m.yaw; m.phase += dt * sp * 2.2; const s = Math.sin(m.phase);
+    if (m.m.legs.length) m.m.legs.forEach((l, k) => l.rotation.x = s * 0.7 * (k % 2 ? -1 : 1) * (k > 1 ? -1 : 1)); m.g.position.y = Math.abs(s) * 0.03;
+    if (m.T.hostile) { m.growl -= dt; if (m.growl <= 0 && Math.hypot(P.x - m.x, P.z - m.z) < 40) { m.growl = rr(3, 8); SFX.growl(m.x, m.z, m.kind === 'alpha'); } }
+  }
+}
+function goDown(txt) {
+  P.down = true; P.hp = 0; P.cd = 0; mouseDown = false; $('hurt').style.opacity = 0.5; SFX.hurt(); big('You are down! You will wake up at dawn…', 4000);
+  if (NET.host && !Object.keys(NET.peers).length) { NET.bcast({ t: 'over', txt }); overScreen(txt); }
+}
+function revive() { P.down = false; P.hp = Math.max(P.hp, P.maxHp * 0.5); P.x = 0; P.z = 6; P.hunger = Math.max(P.hunger, 50); $('hurt').style.opacity = 0; big('You wake up at the campfire…', 3000); }
+function wireMP() {
+  NET.status = t => { $('mpStatus').textContent = t; };
+  $('mpName').value = CFG.name || ('Player' + ((Math.random() * 90 + 10) | 0));
+  const nm = () => { const v = ($('mpName').value || 'Player').trim().slice(0, 12) || 'Player'; CFG.name = v; saveCfg(); return v; };
+  $('btnMP').onclick = () => { show('mp'); NET.status(''); };
+  $('mpBack').onclick = () => { NET.leave(); show('title'); };
+  $('mpHost').onclick = () => { audioInit(); NET.hostGame(nm()); };
+  $('mpJoin').onclick = () => { audioInit(); NET.join($('mpCode').value, nm()); };
+  $('mpCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); });
+  for (const id of ['mpName', 'mpCode']) $(id).addEventListener('keydown', e => e.stopPropagation());
+}
+
 // ---------- go ----------
-renderer.toneMappingExposure = CFG.bright; wireUI(); syncSettings();
+renderer.toneMappingExposure = CFG.bright; wireUI(); wireMP(); syncSettings();
 try { buildWorld(); buildHand(); } catch (err) { console.error(err); fatal('Something went wrong building the forest: ' + err.message); }
 $('loading').style.display = 'none'; show('title'); requestAnimationFrame(frame); if (QS.get('auto')) startGame(false);
 </script>

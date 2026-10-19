@@ -6,3 +6,5 @@ Play / install: https://joshionclaude.github.io/99-nights-in-the-pines/
 - iPhone / iPad / Mac / any browser: open the link, then Share > Add to Home Screen.
 
 WASD move · Shift run · Click chop/attack · E use · F eat · 1-3 tools. Touch: joystick + buttons. Saves every morning.
+
+**Co-op:** up to 4 players online. Tap *Play with friends*, host and share the room code.
