@@ -1,6 +1,6 @@
 // Haunted Hallways service worker: the whole game is cached, so it works offline after the first visit.
 const CACHE = '99-nights-v1';
-const SHELL = ['./', 'index.html', 'vendor/three.min.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'privacy.html'];
+const SHELL = ['./', 'index.html', 'vendor/three.min.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'download.html', 'apple-touch-icon.png', 'privacy.html', 'download.html'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
